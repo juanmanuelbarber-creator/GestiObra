@@ -1,0 +1,2004 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GestiObra</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg:#0f1117; --bg2:#171b26; --bg3:#1e2333; --border:#2a3045;
+  --accent:#f0a500; --accent2:#e07b00; --text:#eef0f6; --muted:#7b82a0;
+  --success:#2ecc71; --danger:#e74c3c; --warning:#f39c12; --info:#3498db;
+  --sw:240px; --r:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
+
+/* LOGIN */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;}
+.login-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:48px 40px;width:100%;max-width:400px;text-align:center;}
+.login-logo{font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--accent);letter-spacing:4px;margin-bottom:8px;}
+.login-sub{color:var(--muted);font-size:13px;letter-spacing:2px;text-transform:uppercase;margin-bottom:40px;}
+.btn-google{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:14px;background:white;color:#333;border:none;border-radius:10px;font-size:15px;font-weight:500;cursor:pointer;transition:all .2s;}
+.btn-google:hover{background:#f5f5f5;transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,0,0,.3);}
+.btn-google img{width:20px;height:20px;}
+.login-footer{margin-top:24px;font-size:12px;color:var(--muted);}
+
+/* APP */
+#app-screen{display:none;}
+#app-screen.visible{display:flex;}
+
+/* SIDEBAR */
+#sidebar{width:var(--sw);min-height:100vh;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:100;}
+.sb-logo{padding:22px 20px 18px;border-bottom:1px solid var(--border);}
+.sb-logo .brand{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--accent);letter-spacing:2px;}
+.sb-logo .sub{font-size:10px;color:var(--muted);margin-top:1px;letter-spacing:2px;text-transform:uppercase;}
+nav{flex:1;padding:12px 0;overflow-y:auto;}
+.nav-sec{padding:10px 20px 3px;font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;cursor:pointer;color:var(--muted);transition:all .15s;border-left:3px solid transparent;font-size:13px;user-select:none;}
+.nav-item:hover{background:var(--bg3);color:var(--text);}
+.nav-item.active{background:var(--bg3);color:var(--accent);border-left-color:var(--accent);font-weight:500;}
+.nav-item i{width:16px;text-align:center;font-size:13px;}
+.nav-item.hidden{display:none;}
+.sb-user{padding:14px 20px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.sb-user img{width:32px;height:32px;border-radius:50%;object-fit:cover;}
+.sb-user-info{flex:1;min-width:0;}
+.sb-user-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sb-user-rol{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.sb-logout{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:4px;}
+.sb-logout:hover{color:var(--danger);}
+
+/* MAIN */
+#main{margin-left:var(--sw);flex:1;min-height:100vh;display:flex;flex-direction:column;}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:12px 26px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.topbar-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;}
+.page{display:none;padding:24px 26px;}
+.page.active{display:block;}
+
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px;}
+.card-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:22px;}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:18px;position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent);}
+.stat-card.green::before{background:var(--success);}
+.stat-card.red::before{background:var(--danger);}
+.stat-card.blue::before{background:var(--info);}
+.stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;}
+.stat-value{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;margin-top:5px;}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:7px;border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;text-decoration:none;}
+.btn-primary{background:var(--accent);color:#000;}
+.btn-primary:hover{background:var(--accent2);}
+.btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border);}
+.btn-secondary:hover{background:var(--border);}
+.btn-danger{background:#2a1515;color:var(--danger);border:1px solid #4a2020;}
+.btn-danger:hover{background:#3a1a1a;}
+.btn-success{background:#0f2a1a;color:var(--success);border:1px solid #1a4a2a;}
+.btn-success:hover{background:#142a1f;}
+.btn-sm{padding:5px 11px;font-size:12px;}
+
+/* FORMS */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;}
+.form-group{display:flex;flex-direction:column;gap:4px;}
+.form-group.full{grid-column:1/-1;}
+label{font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.8px;}
+input,select,textarea{background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text);padding:9px 11px;font-family:'DM Sans',sans-serif;font-size:13px;transition:border .15s;width:100%;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);}
+input[readonly]{opacity:.55;cursor:default;}
+textarea{resize:vertical;min-height:65px;}
+select option{background:var(--bg3);}
+.total-box{background:var(--bg3);border:1px solid var(--accent);border-radius:var(--r);padding:14px 18px;text-align:center;}
+.total-box .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;}
+.total-box .amt{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;color:var(--accent);margin-top:2px;}
+
+/* UPLOAD */
+.upload-area{border:2px dashed var(--border);border-radius:var(--r);padding:20px;text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+.upload-area:hover,.upload-area.drag{border-color:var(--accent);background:rgba(240,165,0,.04);}
+.upload-area input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.upload-area .up-icon{font-size:22px;color:var(--muted);margin-bottom:6px;}
+.upload-area .up-label{font-size:12px;color:var(--muted);}
+.upload-preview{display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:10px 14px;margin-top:8px;}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;}
+thead tr{background:var(--bg3);}
+th{padding:11px 13px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);white-space:nowrap;}
+td{padding:11px 13px;border-top:1px solid var(--border);font-size:13px;vertical-align:middle;}
+tbody tr:hover{background:var(--bg3);}
+.td-r{text-align:right;}
+.td-c{text-align:center;}
+
+/* BADGES */
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
+.badge-green{background:#0f2a1a;color:var(--success);border:1px solid #1a4a2a;}
+.badge-red{background:#2a1515;color:var(--danger);border:1px solid #4a2020;}
+.badge-yellow{background:#2a2010;color:var(--warning);border:1px solid #4a3a10;}
+.badge-blue{background:#0f1e2a;color:var(--info);border:1px solid #1a3a4a;}
+.badge-gray{background:var(--bg3);color:var(--muted);border:1px solid var(--border);}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:13px;width:100%;max-width:660px;max-height:90vh;overflow-y:auto;padding:26px;animation:slideUp .22s ease;}
+@keyframes slideUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+.modal-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;}
+.modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;line-height:1;padding:0 4px;}
+.modal-close:hover{color:var(--text);}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+
+/* TABS */
+.tabs{display:flex;gap:3px;background:var(--bg3);padding:3px;border-radius:9px;width:fit-content;margin-bottom:18px;}
+.tab-btn{padding:7px 16px;border-radius:7px;border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;color:var(--muted);background:none;transition:all .15s;}
+.tab-btn.active{background:var(--bg2);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.35);}
+
+/* FILTERS */
+.filters{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
+.filters select,.filters input{width:auto;}
+.filter-select{min-width:140px;}
+.filter-input{min-width:220px;}
+
+/* PAGINATION */
+.pagination{display:flex;gap:5px;justify-content:center;margin-top:14px;}
+.pg-btn{width:32px;height:32px;border-radius:7px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);cursor:pointer;font-size:13px;transition:all .15s;display:flex;align-items:center;justify-content:center;}
+.pg-btn:hover,.pg-btn.active{background:var(--accent);color:#000;border-color:var(--accent);font-weight:700;}
+
+/* TOAST */
+#toast{position:fixed;bottom:22px;right:22px;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:13px 18px;font-size:13px;z-index:9999;transform:translateY(70px);opacity:0;transition:all .25s;display:flex;align-items:center;gap:9px;max-width:320px;pointer-events:none;}
+#toast.show{transform:translateY(0);opacity:1;}
+#toast.success{border-color:var(--success);}
+#toast.error{border-color:var(--danger);}
+
+/* MISC */
+.empty-state{text-align:center;padding:44px 20px;color:var(--muted);}
+.empty-state i{font-size:34px;margin-bottom:10px;display:block;}
+.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
+.section-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">GestiObra</div>
+    <div class="login-sub">Sistema de Gestion</div>
+    <button class="btn-google" id="btn-google-login">
+      <img src="https://www.google.com/favicon.ico" alt="Google">
+      Continuar con Google
+    </button>
+    <div class="login-footer">Solo usuarios autorizados</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen">
+  <aside id="sidebar">
+    <div class="sb-logo">
+      <div class="brand">GestiObra</div>
+      <div class="sub" id="sb-empresa">Sistema de Gestion</div>
+    </div>
+    <nav id="nav-menu">
+      <div class="nav-sec">Principal</div>
+      <div class="nav-item active" data-page="dashboard" data-roles="admin,vendedor,compras,rrhh,contador">
+        <i class="fas fa-chart-line"></i> Dashboard
+      </div>
+      <div class="nav-sec" data-roles-sec="admin,vendedor,contador">Comercial</div>
+      <div class="nav-item" data-page="ventas" data-roles="admin,vendedor,contador">
+        <i class="fas fa-file-invoice-dollar"></i> Ventas
+      </div>
+      <div class="nav-item" data-page="cobranzas" data-roles="admin,vendedor,contador">
+        <i class="fas fa-hand-holding-dollar"></i> Cobranzas
+      </div>
+      <div class="nav-sec" data-roles-sec="admin,compras,contador">Compras</div>
+      <div class="nav-item" data-page="compras" data-roles="admin,compras,contador">
+        <i class="fas fa-cart-shopping"></i> Compras
+      </div>
+      <div class="nav-item" data-page="pagos" data-roles="admin,compras,contador">
+        <i class="fas fa-money-bill-transfer"></i> Pagos
+      </div>
+      <div class="nav-sec" data-roles-sec="admin,rrhh">Recursos</div>
+      <div class="nav-item" data-page="empleados" data-roles="admin,rrhh">
+        <i class="fas fa-hard-hat"></i> Empleados
+      </div>
+      <div class="nav-item" data-page="stock" data-roles="admin,compras">
+        <i class="fas fa-boxes-stacked"></i> Stock
+      </div>
+      <div class="nav-sec">Maestros</div>
+      <div class="nav-item" data-page="clientes" data-roles="admin,vendedor,compras,contador">
+        <i class="fas fa-building-user"></i> Clientes y Obras
+      </div>
+      <div class="nav-item" data-page="proveedores" data-roles="admin,compras,contador">
+        <i class="fas fa-truck"></i> Proveedores
+      </div>
+      <div class="nav-sec" data-roles-sec="admin">Sistema</div>
+      <div class="nav-item" data-page="usuarios" data-roles="admin">
+        <i class="fas fa-users"></i> Usuarios
+      </div>
+      <div class="nav-item" data-page="config" data-roles="admin">
+        <i class="fas fa-sliders"></i> Configuracion
+      </div>
+    </nav>
+    <div class="sb-user">
+      <img id="sb-avatar" src="https://www.gravatar.com/avatar/?d=mp" alt="Avatar">
+      <div class="sb-user-info">
+        <div class="sb-user-name" id="sb-nombre">Usuario</div>
+        <div class="sb-user-rol" id="sb-rol">-</div>
+      </div>
+      <button class="sb-logout" onclick="logout()" title="Cerrar sesion">
+        <i class="fas fa-sign-out-alt"></i>
+      </button>
+    </div>
+  </aside>
+
+  <div id="main">
+    <div class="topbar">
+      <div class="topbar-title" id="topbar-title">DASHBOARD</div>
+      <div style="font-size:12px;color:var(--muted)" id="fecha-hoy"></div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card">       <div class="stat-label">Facturado total</div><div class="stat-value" id="d-fact">$0</div></div>
+        <div class="stat-card green"> <div class="stat-label">Cobrado</div>        <div class="stat-value" id="d-cob">$0</div></div>
+        <div class="stat-card red">   <div class="stat-label">Pendiente cobro</div><div class="stat-value" id="d-pend">$0</div></div>
+        <div class="stat-card blue">  <div class="stat-label">Total compras</div>  <div class="stat-value" id="d-comp">$0</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:18px;">
+        <div class="card"><div class="card-title"><i class="fas fa-chart-bar" style="color:var(--accent)"></i>Ventas Mensuales</div><canvas id="g-barras" height="120"></canvas></div>
+        <div class="card"><div class="card-title"><i class="fas fa-circle-half-stroke" style="color:var(--success)"></i>Cobranzas</div><canvas id="g-donut" height="120"></canvas></div>
+      </div>
+    </div>
+
+    <!-- VENTAS -->
+    <div class="page" id="page-ventas">
+      <div class="section-header">
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab('ventas','lista')">Lista</button>
+          <button class="tab-btn" onclick="switchTab('ventas','nueva')">Nueva venta</button>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="exportarVentasPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+      </div>
+      <div id="ventas-lista">
+        <div class="filters">
+          <select class="filter-select" id="vf-anio" onchange="cargarVentas()"><option value="">Todos los años</option></select>
+          <select class="filter-select" id="vf-mes" onchange="cargarVentas()">
+            <option value="">Todos los meses</option>
+            <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+            <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+            <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+            <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+          </select>
+          <input class="filter-input" type="text" id="vf-busq" placeholder="Buscar cliente, factura, OC...">
+        </div>
+        <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px;">
+          <div class="stat-card"><div class="stat-label">Sin IVA</div><div class="stat-value" id="v-siniva" style="font-size:20px;">$0</div></div>
+          <div class="stat-card"><div class="stat-label">IVA</div><div class="stat-value" id="v-iva" style="font-size:20px;">$0</div></div>
+          <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value" id="v-total" style="font-size:20px;color:var(--accent);">$0</div></div>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr>
+            <th>Factura</th><th>Cliente</th><th>Obra</th><th>Fecha</th>
+            <th class="td-r">Total</th><th>Condicion</th><th>Estado</th><th>Doc</th><th class="td-c">Acc.</th>
+          </tr></thead><tbody id="ventas-tbody"></tbody></table>
+        </div>
+        <div class="pagination" id="ventas-pag"></div>
+      </div>
+      <div id="ventas-nueva" style="display:none;">
+        <div class="card" style="max-width:820px;">
+          <div class="card-title"><i class="fas fa-plus-circle" style="color:var(--accent);"></i><span id="v-form-title">Nueva Venta</span></div>
+          <input type="hidden" id="v-id">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Cliente *</label>
+              <select id="v-cliente" required><option value="">Seleccione cliente</option></select>
+            </div>
+            <div class="form-group"><label>CUIT</label><input type="text" id="v-cuit" readonly></div>
+            <div class="form-group"><label>Obra</label><select id="v-obra"><option value="">Sin obra / General</option></select></div>
+            <div class="form-group"><label>OC</label><input type="text" id="v-oc"></div>
+            <div class="form-group">
+              <label>Tipo *</label>
+              <select id="v-tipo">
+                <option value="A">A</option><option value="B">B</option>
+                <option value="M">M</option><option value="NC">NC</option><option value="X">X (Interna)</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Punto de venta</label><input type="text" id="v-pv" value="0001" maxlength="4"></div>
+            <div class="form-group"><label>N. Factura</label><input type="text" id="v-factura" placeholder="Se genera automatico" readonly></div>
+            <div class="form-group"><label>Fecha *</label><input type="date" id="v-fecha" required></div>
+            <div class="form-group"><label>Importe sin IVA *</label><input type="number" step="0.01" id="v-importe" required></div>
+            <div class="form-group">
+              <label>IVA %</label>
+              <select id="v-iva"><option value="21">21%</option><option value="10.5">10.5%</option><option value="0">0%</option></select>
+            </div>
+            <div class="form-group">
+              <label>Condicion *</label>
+              <select id="v-condicion"><option>Contado</option><option>Transferencia</option><option>Cheque</option><option>e-Cheq</option></select>
+            </div>
+            <div class="form-group" id="v-banco-grp" style="display:none;">
+              <label>Banco</label>
+              <select id="v-banco"><option value="">Seleccione</option><option>Banco Galicia</option><option>Brubank</option><option>Naranja X</option><option>Mercado Pago</option></select>
+            </div>
+            <div class="form-group full"><label>Descripcion</label><textarea id="v-desc"></textarea></div>
+            <div class="form-group full">
+              <label>Documento adjunto</label>
+              <div class="upload-area" id="v-upload-area">
+                <input type="file" id="v-file" accept=".pdf,.jpg,.jpeg,.png,.webp">
+                <div class="up-icon"><i class="fas fa-cloud-arrow-up"></i></div>
+                <div class="up-label">Arrastrar o <strong style="color:var(--accent);">click</strong> para subir &mdash; PDF, JPG, PNG (max 10MB)</div>
+              </div>
+              <div id="v-file-preview" style="display:none;"></div>
+              <input type="hidden" id="v-url-adj">
+            </div>
+            <div class="form-group full">
+              <div class="total-box"><div class="lbl">Total con IVA</div><div class="amt" id="v-total-disp">$0,00</div></div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="switchTab('ventas','lista')">Cancelar</button>
+            <button class="btn btn-primary" id="v-btn-save"><i class="fas fa-save"></i> <span id="v-btn-txt">Guardar Venta</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COBRANZAS -->
+    <div class="page" id="page-cobranzas">
+      <div class="section-header">
+        <div class="section-title">Estado de Cobranzas</div>
+        <button class="btn btn-secondary btn-sm" onclick="toggleVerTodasCob()"><i class="fas fa-eye"></i> <span id="cob-toggle-txt">Ver todas</span></button>
+      </div>
+      <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:18px;">
+        <div class="stat-card green"><div class="stat-label">Total cobrado</div><div class="stat-value" id="cob-cobrado">$0</div></div>
+        <div class="stat-card red">  <div class="stat-label">Total pendiente</div><div class="stat-value" id="cob-pendiente">$0</div></div>
+      </div>
+      <div class="filters"><input class="filter-input" type="text" id="cob-busq" placeholder="Buscar cliente..."></div>
+      <div class="table-wrap">
+        <table><thead><tr>
+          <th>Cliente</th><th>Factura</th><th>Obra</th>
+          <th class="td-r">Total</th><th class="td-r">Cobrado</th><th class="td-r">Pendiente</th>
+          <th class="td-c">Estado</th><th class="td-c">Acc.</th>
+        </tr></thead><tbody id="cob-tbody"></tbody></table>
+      </div>
+      <div class="pagination" id="cob-pag"></div>
+    </div>
+
+    <!-- COMPRAS -->
+    <div class="page" id="page-compras">
+      <div class="section-header">
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab('compras','lista')">Lista</button>
+          <button class="tab-btn" onclick="switchTab('compras','nueva')">Nueva compra</button>
+        </div>
+      </div>
+      <div id="compras-lista">
+        <div class="filters"><input class="filter-input" type="text" id="cf-busq" placeholder="Buscar proveedor..."></div>
+        <div class="table-wrap">
+          <table><thead><tr>
+            <th>Proveedor</th><th>Obra</th><th>Factura</th><th>Fecha</th>
+            <th>Categoria</th><th class="td-r">Total</th><th>Estado</th><th>Doc</th><th class="td-c">Acc.</th>
+          </tr></thead><tbody id="compras-tbody"></tbody></table>
+        </div>
+        <div class="pagination" id="compras-pag"></div>
+      </div>
+      <div id="compras-nueva" style="display:none;">
+        <div class="card" style="max-width:820px;">
+          <div class="card-title"><i class="fas fa-plus-circle" style="color:var(--accent);"></i>Nueva Compra</div>
+          <input type="hidden" id="cp-id">
+          <div class="form-grid">
+            <div class="form-group"><label>Proveedor *</label><select id="cp-prov" required><option value="">Seleccione proveedor</option></select></div>
+            <div class="form-group"><label>Obra (opcional)</label><select id="cp-obra"><option value="">Gasto general</option></select></div>
+            <div class="form-group"><label>N. Factura</label><input type="text" id="cp-factura"></div>
+            <div class="form-group"><label>N. Remito</label><input type="text" id="cp-remito"></div>
+            <div class="form-group"><label>Fecha *</label><input type="date" id="cp-fecha" required></div>
+            <div class="form-group">
+              <label>Categoria</label>
+              <select id="cp-cat"><option value="">Sin categoria</option><option>Materiales</option><option>Herramientas</option><option>Servicios</option><option>Equipos</option><option>Otros</option></select>
+            </div>
+            <div class="form-group"><label>Importe sin IVA *</label><input type="number" step="0.01" id="cp-importe" required></div>
+            <div class="form-group">
+              <label>IVA %</label>
+              <select id="cp-iva"><option value="21">21%</option><option value="10.5">10.5%</option><option value="0">0%</option></select>
+            </div>
+            <div class="form-group full"><label>Descripcion</label><textarea id="cp-desc"></textarea></div>
+            <div class="form-group full">
+              <label>Documento adjunto</label>
+              <div class="upload-area" id="cp-upload-area">
+                <input type="file" id="cp-file" accept=".pdf,.jpg,.jpeg,.png,.webp">
+                <div class="up-icon"><i class="fas fa-cloud-arrow-up"></i></div>
+                <div class="up-label">Arrastrar o <strong style="color:var(--accent);">click</strong> para subir</div>
+              </div>
+              <div id="cp-file-preview" style="display:none;"></div>
+              <input type="hidden" id="cp-url-adj">
+            </div>
+            <div class="form-group full">
+              <div class="total-box"><div class="lbl">Total con IVA</div><div class="amt" id="cp-total-disp">$0,00</div></div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="switchTab('compras','lista')">Cancelar</button>
+            <button class="btn btn-primary" id="cp-btn-save"><i class="fas fa-save"></i> Guardar Compra</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGOS -->
+    <div class="page" id="page-pagos">
+      <div class="section-header"><div class="section-title">Pagos a Proveedores</div></div>
+      <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:18px;">
+        <div class="stat-card green"><div class="stat-label">Total pagado</div><div class="stat-value" id="pag-pagado">$0</div></div>
+        <div class="stat-card red">  <div class="stat-label">Total adeudado</div><div class="stat-value" id="pag-adeudado">$0</div></div>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr>
+          <th>Proveedor</th><th>Factura</th><th>Obra</th>
+          <th class="td-r">Total</th><th class="td-r">Pagado</th><th class="td-r">Deuda</th>
+          <th class="td-c">Estado</th><th class="td-c">Acc.</th>
+        </tr></thead><tbody id="pag-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- EMPLEADOS -->
+    <div class="page" id="page-empleados">
+      <div class="section-header"><div class="section-title">Empleados</div></div>
+      <div class="table-wrap">
+        <table><thead><tr>
+          <th>Nombre</th><th>DNI / CUIL</th><th>Categoria</th><th>Obra</th><th>Ingreso</th><th class="td-c">Estado</th>
+        </tr></thead><tbody id="emp-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- STOCK -->
+    <div class="page" id="page-stock">
+      <div class="section-header"><div class="section-title">Stock de Materiales</div></div>
+      <div class="table-wrap">
+        <table><thead><tr>
+          <th>Material</th><th>Categoria</th><th>Unidad</th>
+          <th class="td-r">Stock</th><th class="td-r">Minimo</th><th class="td-r">Precio ref.</th><th class="td-c">Estado</th>
+        </tr></thead><tbody id="stock-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- CLIENTES Y OBRAS -->
+    <div class="page" id="page-clientes">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('cl','clientes')">Clientes</button>
+        <button class="tab-btn" onclick="switchTab('cl','obras')">Obras</button>
+      </div>
+      <div id="cl-clientes">
+        <div class="section-header" style="margin-bottom:12px;">
+          <div></div>
+          <button class="btn btn-primary btn-sm" onclick="abrirModalCliente()"><i class="fas fa-plus"></i> Nuevo cliente</button>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Nombre</th><th>CUIT</th><th>Email</th><th>Telefono</th><th class="td-c">Estado</th><th class="td-c">Acc.</th></tr></thead>
+          <tbody id="cli-tbody"></tbody></table>
+        </div>
+      </div>
+      <div id="cl-obras" style="display:none;">
+        <div class="section-header" style="margin-bottom:12px;">
+          <div></div>
+          <button class="btn btn-primary btn-sm" onclick="abrirModalObra()"><i class="fas fa-plus"></i> Nueva obra</button>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Obra</th><th>Cliente</th><th>Direccion</th><th>Inicio</th><th>Fin</th><th>Presupuesto</th><th class="td-c">Estado</th><th class="td-c">Acc.</th></tr></thead>
+          <tbody id="obras-tbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROVEEDORES -->
+    <div class="page" id="page-proveedores">
+      <div class="section-header">
+        <div class="section-title">Proveedores</div>
+        <button class="btn btn-primary btn-sm" onclick="abrirModalProveedor()"><i class="fas fa-plus"></i> Nuevo proveedor</button>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Nombre</th><th>CUIT</th><th>Rubro</th><th>Telefono</th><th class="td-c">Estado</th><th class="td-c">Acc.</th></tr></thead>
+        <tbody id="prov-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- USUARIOS -->
+    <div class="page" id="page-usuarios">
+      <div class="section-header"><div class="section-title">Usuarios del Sistema</div></div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th class="td-c">Estado</th><th class="td-c">Acc.</th></tr></thead>
+        <tbody id="usuarios-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- CONFIG -->
+    <div class="page" id="page-config">
+      <div class="card" style="max-width:580px;">
+        <div class="card-title"><i class="fas fa-sliders" style="color:var(--accent);"></i>Configuracion</div>
+        <div class="form-grid">
+          <div class="form-group full"><label>Nombre empresa</label><input type="text" id="cfg-nombre"></div>
+          <div class="form-group"><label>CUIT</label><input type="text" id="cfg-cuit"></div>
+          <div class="form-group"><label>IVA por defecto (%)</label><input type="text" id="cfg-iva"></div>
+          <div class="form-group full"><label>Direccion</label><input type="text" id="cfg-dir"></div>
+          <div class="form-group full"><label>URL Logo</label><input type="text" id="cfg-logo"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-primary" onclick="guardarConfigUI()"><i class="fas fa-save"></i> Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALES -->
+<div class="modal-overlay" id="modal-cobro">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">Registrar Cobro</div><button class="modal-close" onclick="cerrarModal('modal-cobro')">&times;</button></div>
+    <input type="hidden" id="mc-vid">
+    <div id="mc-info" style="margin-bottom:14px;font-size:13px;color:var(--muted);"></div>
+    <div class="form-group"><label>Importe a cobrar *</label><input type="number" step="0.01" id="mc-importe"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="cerrarModal('modal-cobro')">Cancelar</button>
+      <button class="btn btn-success" onclick="confirmarCobro()"><i class="fas fa-check"></i> Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-pago">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">Registrar Pago</div><button class="modal-close" onclick="cerrarModal('modal-pago')">&times;</button></div>
+    <input type="hidden" id="mp-cid">
+    <div id="mp-info" style="margin-bottom:14px;font-size:13px;color:var(--muted);"></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Importe *</label><input type="number" step="0.01" id="mp-importe"></div>
+      <div class="form-group"><label>Condicion</label><select id="mp-cond"><option>Transferencia</option><option>Cheque</option><option>e-Cheq</option><option>Contado</option></select></div>
+      <div class="form-group"><label>Banco</label><input type="text" id="mp-banco"></div>
+      <div class="form-group"><label>N. Cheque</label><input type="text" id="mp-cheque"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="cerrarModal('modal-pago')">Cancelar</button>
+      <button class="btn btn-success" onclick="confirmarPago()"><i class="fas fa-check"></i> Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-cliente">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="mcl-title">Nuevo Cliente</div><button class="modal-close" onclick="cerrarModal('modal-cliente')">&times;</button></div>
+    <input type="hidden" id="mcl-id">
+    <div class="form-grid">
+      <div class="form-group full"><label>Nombre / Razon social *</label><input type="text" id="mcl-nombre"></div>
+      <div class="form-group"><label>CUIT</label><input type="text" id="mcl-cuit"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="mcl-email"></div>
+      <div class="form-group"><label>Telefono</label><input type="text" id="mcl-tel"></div>
+      <div class="form-group full"><label>Direccion</label><input type="text" id="mcl-dir"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="cerrarModal('modal-cliente')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarCliente()"><i class="fas fa-save"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-obra">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="mob-title">Nueva Obra</div><button class="modal-close" onclick="cerrarModal('modal-obra')">&times;</button></div>
+    <input type="hidden" id="mob-id">
+    <div class="form-grid">
+      <div class="form-group full"><label>Nombre *</label><input type="text" id="mob-nombre"></div>
+      <div class="form-group"><label>Cliente *</label><select id="mob-cliente"><option value="">Seleccione</option></select></div>
+      <div class="form-group"><label>Estado</label><select id="mob-estado"><option value="activa">Activa</option><option value="pausada">Pausada</option><option value="finalizada">Finalizada</option></select></div>
+      <div class="form-group"><label>Fecha inicio</label><input type="date" id="mob-inicio"></div>
+      <div class="form-group"><label>Fecha fin est.</label><input type="date" id="mob-fin"></div>
+      <div class="form-group"><label>Presupuesto</label><input type="number" step="0.01" id="mob-pres"></div>
+      <div class="form-group full"><label>Direccion</label><input type="text" id="mob-dir"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="cerrarModal('modal-obra')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarObra()"><i class="fas fa-save"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-prov">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="mpv-title">Nuevo Proveedor</div><button class="modal-close" onclick="cerrarModal('modal-prov')">&times;</button></div>
+    <input type="hidden" id="mpv-id">
+    <div class="form-grid">
+      <div class="form-group full"><label>Nombre *</label><input type="text" id="mpv-nombre"></div>
+      <div class="form-group"><label>CUIT</label><input type="text" id="mpv-cuit"></div>
+      <div class="form-group"><label>Rubro</label><input type="text" id="mpv-rubro"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="mpv-email"></div>
+      <div class="form-group"><label>Telefono</label><input type="text" id="mpv-tel"></div>
+      <div class="form-group"><label>Banco</label><input type="text" id="mpv-banco"></div>
+      <div class="form-group full"><label>CBU</label><input type="text" id="mpv-cbu"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="cerrarModal('modal-prov')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarProveedor()"><i class="fas fa-save"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+// ============================================================
+// CONFIGURACION - EDITÁ ESTOS VALORES
+// ============================================================
+const SUPABASE_URL = 'https://ckdkqesuzgmebnbxvfjo.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_AGwh2cL_JThBlM1DBlrQyQ_7XOVWeLs';
+
+// ============================================================
+// INIT SUPABASE
+// ============================================================
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ============================================================
+// ESTADO GLOBAL
+// ============================================================
+const G = {
+  user:         null,
+  perfil:       null,
+  rol:          null,
+  clientes:     [],
+  obras:        [],
+  proveedores:  [],
+  ventas:       [],
+  cobranzas:    [],
+  compras:      [],
+  pagos:        [],
+  empleados:    [],
+  materiales:   [],
+  config:       {},
+  charts:       {}
+};
+
+const PER_PAG = 15;
+const pags    = { ventas: 1, cob: 1, compras: 1 };
+let verTodasCob = false;
+const archivos  = { v: null, cp: null };
+
+// ============================================================
+// HELPERS
+// ============================================================
+function ge(id) { return document.getElementById(id); }
+
+function fmt(n) {
+  return Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+}
+
+function fmtN(n) {
+  return Number(n || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+}
+
+function toast(msg, tipo) {
+  tipo = tipo || 'success';
+  const el    = ge('toast');
+  const icon  = tipo === 'success' ? 'check-circle' : 'exclamation-circle';
+  const color = tipo === 'success' ? 'success' : 'danger';
+  el.innerHTML = `<i class="fas fa-${icon}" style="color:var(--${color})"></i> ${msg}`;
+  el.className = `show ${tipo}`;
+  setTimeout(() => { el.className = ''; }, 3200);
+}
+
+function abrirModal(id)  { ge(id).classList.add('open'); }
+function cerrarModal(id) { ge(id).classList.remove('open'); }
+
+function badge(estado) {
+  if (['cobrado','pagado','activa'].includes(estado)) return 'badge-green';
+  if (['parcial','pausada'].includes(estado))         return 'badge-yellow';
+  if (['pendiente'].includes(estado))                 return 'badge-red';
+  if (['finalizada'].includes(estado))                return 'badge-gray';
+  return 'badge-gray';
+}
+
+function mkBtn(cls, icon, fn) {
+  const b = document.createElement('button');
+  b.className = `btn ${cls} btn-sm`;
+  b.innerHTML = `<i class="fas fa-${icon}"></i>`;
+  b.onclick   = fn;
+  return b;
+}
+
+function mkTd(content, cls) {
+  const td = document.createElement('td');
+  if (cls) td.className = cls;
+  if (typeof content === 'string') td.innerHTML = content;
+  else if (content) td.appendChild(content);
+  return td;
+}
+
+function renderPag(contId, total, pag, fn) {
+  const c = ge(contId);
+  c.innerHTML = '';
+  if (total <= PER_PAG) return;
+  const tp  = Math.ceil(total / PER_PAG);
+  const ini = Math.max(1, pag - 2);
+  const fin = Math.min(tp, ini + 4);
+  const mk  = (txt, p, ac) => {
+    const b = document.createElement('button');
+    b.className   = 'pg-btn' + (ac ? ' active' : '');
+    b.textContent = txt;
+    b.onclick     = () => fn(p);
+    c.appendChild(b);
+  };
+  if (pag > 1) mk('<', pag - 1, false);
+  for (let i = ini; i <= fin; i++) mk(i, i, i === pag);
+  if (pag < tp) mk('>', pag + 1, false);
+}
+
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+// ============================================================
+// AUTH - LOGIN / LOGOUT
+// ============================================================
+async function initAuth() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) await onLogin(session.user);
+
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session)  await onLogin(session.user);
+    if (event === 'SIGNED_OUT')            onLogout();
+  });
+}
+
+async function onLogin(user) {
+  G.user = user;
+  // Cargar perfil
+  const { data: perfil } = await sb.from('perfiles').select('*').eq('id', user.id).single();
+  G.perfil = perfil;
+  G.rol    = perfil?.rol || 'vendedor';
+
+  // UI usuario
+  ge('sb-nombre').textContent = perfil?.nombre || user.email;
+  ge('sb-rol').textContent    = G.rol.toUpperCase();
+  if (user.user_metadata?.avatar_url) ge('sb-avatar').src = user.user_metadata.avatar_url;
+
+  // Aplicar permisos al menu
+  aplicarPermisos();
+
+  // Mostrar app
+  ge('login-screen').style.display = 'none';
+  ge('app-screen').classList.add('visible');
+
+  // Cargar datos iniciales
+  await cargarMaestros();
+  cargarDashboard();
+}
+
+function onLogout() {
+  G.user = G.perfil = G.rol = null;
+  ge('login-screen').style.display = 'flex';
+  ge('app-screen').classList.remove('visible');
+}
+
+async function logout() {
+  await sb.auth.signOut();
+}
+
+function aplicarPermisos() {
+  document.querySelectorAll('.nav-item[data-roles]').forEach(item => {
+    const roles = item.dataset.roles.split(',');
+    item.classList.toggle('hidden', !roles.includes(G.rol));
+  });
+}
+
+// Google login
+ge('btn-google-login').addEventListener('click', async () => {
+  await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options:  { redirectTo: window.location.href }
+  });
+});
+
+// ============================================================
+// NAVEGACION
+// ============================================================
+document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+  item.addEventListener('click', () => {
+    const roles = item.dataset.roles?.split(',') || [];
+    if (!roles.includes(G.rol)) { toast('No tienes permiso para esta seccion', 'error'); return; }
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    item.classList.add('active');
+    const page = item.dataset.page;
+    ge(`page-${page}`).classList.add('active');
+    ge('topbar-title').textContent = item.textContent.trim().toUpperCase();
+    onPageLoad(page);
+  });
+});
+
+function switchTab(mod, tab) {
+  if (mod === 'ventas') {
+    ge('ventas-lista').style.display  = tab === 'lista' ? 'block' : 'none';
+    ge('ventas-nueva').style.display  = tab === 'nueva' ? 'block' : 'none';
+    const btns = document.querySelectorAll('#page-ventas .tab-btn');
+    btns[0].classList.toggle('active', tab === 'lista');
+    btns[1].classList.toggle('active', tab === 'nueva');
+    if (tab === 'lista') cargarVentas();
+  } else if (mod === 'compras') {
+    ge('compras-lista').style.display = tab === 'lista' ? 'block' : 'none';
+    ge('compras-nueva').style.display = tab === 'nueva' ? 'block' : 'none';
+    const btns = document.querySelectorAll('#page-compras .tab-btn');
+    btns[0].classList.toggle('active', tab === 'lista');
+    btns[1].classList.toggle('active', tab === 'nueva');
+    if (tab === 'lista') cargarCompras();
+  } else if (mod === 'cl') {
+    ge('cl-clientes').style.display = tab === 'clientes' ? 'block' : 'none';
+    ge('cl-obras').style.display    = tab === 'obras'    ? 'block' : 'none';
+    const btns = document.querySelectorAll('#page-clientes .tab-btn');
+    btns[0].classList.toggle('active', tab === 'clientes');
+    btns[1].classList.toggle('active', tab === 'obras');
+    if (tab === 'obras') cargarObrasTabla();
+  }
+}
+
+function onPageLoad(p) {
+  const map = {
+    dashboard:   cargarDashboard,
+    ventas:      cargarVentas,
+    cobranzas:   cargarCobranzas,
+    compras:     cargarCompras,
+    pagos:       cargarPagos,
+    empleados:   cargarEmpleados,
+    stock:       cargarStock,
+    clientes:    cargarClientesTabla,
+    proveedores: cargarProveedores,
+    usuarios:    cargarUsuarios,
+    config:      cargarConfigUI
+  };
+  if (map[p]) map[p]();
+}
+
+// ============================================================
+// MAESTROS (carga unica al inicio)
+// ============================================================
+async function cargarMaestros() {
+  const [{ data: cli }, { data: obr }, { data: prov }] = await Promise.all([
+    sb.from('clientes').select('id,nombre,cuit').eq('activo', true).order('nombre'),
+    sb.from('obras').select('id,nombre,cliente_id').order('nombre'),
+    sb.from('proveedores').select('id,nombre,cuit').eq('activo', true).order('nombre')
+  ]);
+
+  G.clientes    = cli    || [];
+  G.obras       = obr    || [];
+  G.proveedores = prov   || [];
+
+  // Fecha
+  ge('fecha-hoy').textContent = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  // Poblar selects
+  poblarSelect('v-cliente',   G.clientes,    'nombre', 'id', 'Seleccione cliente');
+  poblarSelect('mob-cliente', G.clientes,    'nombre', 'id', 'Seleccione');
+  poblarSelect('cp-prov',     G.proveedores, 'nombre', 'id', 'Seleccione proveedor');
+  poblarObrasCompras();
+}
+
+function poblarSelect(id, lista, labelKey, valKey, placeholder) {
+  const s = ge(id);
+  if (!s) return;
+  s.innerHTML = `<option value="">${placeholder}</option>`;
+  lista.forEach(item => s.add(new Option(item[labelKey], item[valKey])));
+}
+
+function poblarObrasCompras() {
+  const so = ge('cp-obra');
+  so.innerHTML = '<option value="">Gasto general</option>';
+  G.obras.forEach(o => so.add(new Option(o.nombre, o.id)));
+}
+
+function refrescarClientes() {
+  sb.from('clientes').select('id,nombre,cuit').eq('activo', true).order('nombre').then(({ data }) => {
+    G.clientes = data || [];
+    ['v-cliente', 'mob-cliente'].forEach(id => {
+      const s = ge(id), val = s.value;
+      poblarSelect(id, G.clientes, 'nombre', 'id', id === 'v-cliente' ? 'Seleccione cliente' : 'Seleccione');
+      s.value = val;
+    });
+  });
+}
+
+function refrescarProveedores() {
+  sb.from('proveedores').select('id,nombre,cuit').eq('activo', true).order('nombre').then(({ data }) => {
+    G.proveedores = data || [];
+    const sp = ge('cp-prov'), val = sp.value;
+    poblarSelect('cp-prov', G.proveedores, 'nombre', 'id', 'Seleccione proveedor');
+    sp.value = val;
+  });
+}
+
+function refrescarObras() {
+  sb.from('obras').select('id,nombre,cliente_id').order('nombre').then(({ data }) => {
+    G.obras = data || [];
+    poblarObrasCompras();
+    const so = ge('mob-cliente');
+    if (so && so.value) filtrarObrasModal(so.value);
+  });
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+async function cargarDashboard() {
+  const [{ data: ventas }, { data: cobros }, { data: compras }] = await Promise.all([
+    sb.from('ventas').select('fecha,importe_neto,iva_monto,total'),
+    sb.from('cobros').select('importe'),
+    sb.from('compras').select('total')
+  ]);
+
+  const totalFact     = (ventas  || []).reduce((s, v) => s + Number(v.total), 0);
+  const totalCobrado  = (cobros  || []).reduce((s, c) => s + Number(c.importe), 0);
+  const totalComprado = (compras || []).reduce((s, c) => s + Number(c.total), 0);
+
+  ge('d-fact').textContent = fmt(totalFact);
+  ge('d-cob').textContent  = fmt(totalCobrado);
+  ge('d-pend').textContent = fmt(totalFact - totalCobrado);
+  ge('d-comp').textContent = fmt(totalComprado);
+
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const totM  = new Array(12).fill(0);
+  (ventas || []).forEach(v => { totM[new Date(v.fecha).getMonth()] += Number(v.total); });
+
+  if (G.charts.bar) G.charts.bar.destroy();
+  G.charts.bar = new Chart(ge('g-barras'), {
+    type: 'bar',
+    data: { labels: meses, datasets: [{ label: 'Ventas', data: totM, backgroundColor: '#f0a500', borderRadius: 5, borderSkipped: false }] },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#2a3045' }, ticks: { color: '#7b82a0' } },
+        y: { grid: { color: '#2a3045' }, ticks: { color: '#7b82a0', callback: v => '$' + Number(v).toLocaleString('es-AR') } }
+      }
+    }
+  });
+
+  const pend = Math.max(0, totalFact - totalCobrado);
+  if (G.charts.donut) G.charts.donut.destroy();
+  G.charts.donut = new Chart(ge('g-donut'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Cobrado', 'Pendiente'],
+      datasets: [{ data: [totalCobrado, pend || 0.01], backgroundColor: ['#2ecc71', '#e74c3c'], borderWidth: 0 }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#7b82a0', padding: 14 } } }, cutout: '70%' }
+  });
+}
+
+// ============================================================
+// VENTAS
+// ============================================================
+async function cargarVentas() {
+  let q = sb.from('ventas')
+    .select('id,cliente_id,clientes(nombre,cuit),obra_id,obras(nombre),tipo,nro_factura,oc,fecha,importe_neto,iva_pct,iva_monto,total,condicion,banco,descripcion,url_adjunto')
+    .order('fecha', { ascending: false });
+
+  const anio = ge('vf-anio').value;
+  const mes  = ge('vf-mes').value;
+  const busq = ge('vf-busq').value.trim();
+
+  if (anio) {
+    const d1 = mes ? `${anio}-${String(mes).padStart(2,'0')}-01`    : `${anio}-01-01`;
+    const d2 = mes ? `${anio}-${String(mes).padStart(2,'0')}-31`    : `${anio}-12-31`;
+    q = q.gte('fecha', d1).lte('fecha', d2);
+  }
+
+  const { data, error } = await q;
+  if (error) { toast('Error cargando ventas', 'error'); return; }
+
+  let ventas = (data || []).map(v => ({
+    id:          v.id,
+    cliente:     v.clientes?.nombre   || '',
+    clienteId:   v.cliente_id,
+    cuit:        v.clientes?.cuit     || '',
+    obra:        v.obras?.nombre      || '',
+    obraId:      v.obra_id            || null,
+    oc:          v.oc                 || '',
+    tipo:        v.tipo               || '',
+    fecha:       v.fecha              || '',
+    factura:     v.nro_factura        || '',
+    importe:     Number(v.importe_neto)|| 0,
+    iva:         Number(v.iva_pct)    || 0,
+    ivaMonto:    Number(v.iva_monto)  || 0,
+    total:       Number(v.total)      || 0,
+    condicion:   v.condicion          || '',
+    banco:       v.banco              || '',
+    descripcion: v.descripcion        || '',
+    urlAdjunto:  v.url_adjunto        || ''
+  }));
+
+  if (busq) {
+    const b = busq.toLowerCase();
+    ventas = ventas.filter(v =>
+      v.cliente.toLowerCase().includes(b) ||
+      v.factura.toLowerCase().includes(b) ||
+      v.oc.toLowerCase().includes(b)
+    );
+  }
+
+  // Poblar años
+  const anios = [...new Set(ventas.map(v => v.fecha.slice(0, 4)))].sort().reverse();
+  const saAnio = ge('vf-anio');
+  const valAnio = saAnio.value;
+  saAnio.innerHTML = '<option value="">Todos los años</option>';
+  anios.forEach(a => saAnio.add(new Option(a, a)));
+  saAnio.value = valAnio;
+
+  G.ventas = ventas;
+  pags.ventas = 1;
+  renderVentas();
+  calcTotalesVentas();
+}
+
+function calcTotalesVentas() {
+  const r = G.ventas.reduce((a, v) => ({ si: a.si + v.importe, iv: a.iv + v.ivaMonto, tot: a.tot + v.total }), { si: 0, iv: 0, tot: 0 });
+  ge('v-siniva').textContent = fmt(r.si);
+  ge('v-iva').textContent    = fmt(r.iv);
+  ge('v-total').textContent  = fmt(r.tot);
+}
+
+async function renderVentas() {
+  const ini = (pags.ventas - 1) * PER_PAG;
+  const pag = G.ventas.slice(ini, ini + PER_PAG);
+  const tb  = ge('ventas-tbody');
+  tb.innerHTML = '';
+
+  if (!pag.length) {
+    tb.innerHTML = '<tr><td colspan="9"><div class="empty-state"><i class="fas fa-file-invoice"></i>Sin ventas registradas</div></td></tr>';
+    renderPag('ventas-pag', 0, 1, () => {});
+    return;
+  }
+
+  // Cargar estados de cobro
+  const ids = pag.map(v => v.id);
+  const { data: cobData } = await sb.from('v_estado_cobros').select('id,estado').in('id', ids);
+  const mapaEst = {};
+  (cobData || []).forEach(c => { mapaEst[c.id] = c.estado; });
+
+  pag.forEach(v => {
+    const est = mapaEst[v.id] || 'pendiente';
+    const tr  = document.createElement('tr');
+
+    tr.appendChild(mkTd(`<strong style="color:var(--accent)">${v.factura || '-'}</strong>`));
+    tr.appendChild(mkTd(v.cliente));
+    tr.appendChild(mkTd(`<span style="color:var(--muted)">${v.obra || '-'}</span>`));
+    tr.appendChild(mkTd(v.fecha));
+    tr.appendChild(mkTd(`<strong>${fmt(v.total)}</strong>`, 'td-r'));
+    tr.appendChild(mkTd(v.condicion + (v.banco ? ` - ${v.banco}` : '')));
+    tr.appendChild(mkTd(`<span class="badge ${badge(est)}">${est}</span>`, 'td-c'));
+
+    const tdDoc = document.createElement('td');
+    tdDoc.className = 'td-c';
+    if (v.urlAdjunto) {
+      const a = document.createElement('a');
+      a.href = v.urlAdjunto; a.target = '_blank';
+      a.className = 'btn btn-secondary btn-sm';
+      a.innerHTML = '<i class="fas fa-file-alt"></i>';
+      tdDoc.appendChild(a);
+    } else {
+      tdDoc.innerHTML = '<span style="color:var(--muted);font-size:11px">-</span>';
+    }
+    tr.appendChild(tdDoc);
+
+    const tdAcc = document.createElement('td');
+    tdAcc.className = 'td-c';
+    tdAcc.style.whiteSpace = 'nowrap';
+    tdAcc.appendChild(mkBtn('btn-secondary', 'pen',   () => editarVenta(v.id)));
+    tdAcc.appendChild(document.createTextNode(' '));
+    tdAcc.appendChild(mkBtn('btn-danger',    'trash', () => eliminarVentaUI(v.id)));
+    tr.appendChild(tdAcc);
+
+    tb.appendChild(tr);
+  });
+
+  renderPag('ventas-pag', G.ventas.length, pags.ventas, p => { pags.ventas = p; renderVentas(); });
+}
+
+// Formulario ventas
+function calcTotalVenta() {
+  const imp = parseFloat(ge('v-importe').value) || 0;
+  const iva = parseFloat(ge('v-iva').value)     || 0;
+  ge('v-total-disp').textContent = fmt(imp + imp * iva / 100);
+}
+
+function onClienteChange() {
+  const id  = ge('v-cliente').value;
+  const cli = G.clientes.find(c => c.id === id);
+  ge('v-cuit').value = cli?.cuit || '';
+  const sel = ge('v-obra');
+  sel.innerHTML = '<option value="">Sin obra / General</option>';
+  G.obras.filter(o => o.cliente_id === id).forEach(o => sel.add(new Option(o.nombre, o.id)));
+  generarNroFactura();
+}
+
+function onTipoChange() {
+  generarNroFactura();
+  const esX = ge('v-tipo').value === 'X';
+  ge('v-iva').value = esX ? '0' : '21';
+  calcTotalVenta();
+}
+
+function onCondVChange() {
+  ge('v-banco-grp').style.display = ge('v-condicion').value === 'Transferencia' ? 'flex' : 'none';
+}
+
+async function generarNroFactura() {
+  if (ge('v-id').value) return;
+  const tipo = ge('v-tipo').value;
+  const pv   = (ge('v-pv').value || '0001').padStart(4, '0');
+  const { data } = await sb.from('ventas').select('nro_factura').eq('tipo', tipo);
+  const max = (data || []).reduce((m, v) => {
+    const parts = (v.nro_factura || '').split('-');
+    if (parts.length === 3 && parts[1] === pv) {
+      const n = parseInt(parts[2], 10);
+      return isNaN(n) ? m : Math.max(m, n);
+    }
+    return m;
+  }, 0);
+  ge('v-factura').value = `${tipo}-${pv}-${String(max + 1).padStart(6, '0')}`;
+}
+
+async function guardarVentaUI() {
+  const clienteId = ge('v-cliente').value;
+  const fecha     = ge('v-fecha').value;
+  const importe   = parseFloat(ge('v-importe').value);
+  if (!clienteId || !fecha || !importe) { toast('Completa los campos obligatorios', 'error'); return; }
+
+  ge('v-btn-save').disabled = true;
+  ge('v-btn-txt').textContent = 'Guardando...';
+
+  const ivaPct   = parseFloat(ge('v-iva').value) || 0;
+  const ivaMonto = +(importe * ivaPct / 100).toFixed(2);
+  const total    = +(importe + ivaMonto).toFixed(2);
+
+  const payload = {
+    cliente_id:   clienteId,
+    obra_id:      ge('v-obra').value      || null,
+    tipo:         ge('v-tipo').value,
+    nro_factura:  ge('v-factura').value   || null,
+    oc:           ge('v-oc').value        || null,
+    fecha:        fecha,
+    importe_neto: importe,
+    iva_pct:      ivaPct,
+    iva_monto:    ivaMonto,
+    total:        total,
+    condicion:    ge('v-condicion').value,
+    banco:        ge('v-banco')?.value    || null,
+    descripcion:  ge('v-desc').value      || null,
+    url_adjunto:  ge('v-url-adj').value   || null
+  };
+
+  let error, data;
+  const editId = ge('v-id').value;
+  if (editId) {
+    ({ error } = await sb.from('ventas').update(payload).eq('id', editId));
+    data = { id: editId };
+  } else {
+    ({ data, error } = await sb.from('ventas').insert(payload).select().single());
+  }
+
+  if (error) {
+    toast('Error guardando venta: ' + error.message, 'error');
+    ge('v-btn-save').disabled = false;
+    ge('v-btn-txt').textContent = 'Guardar Venta';
+    return;
+  }
+
+  // Subir adjunto si hay
+  if (archivos['v'] && data?.id) await subirAdjunto('v', data.id, 'ventas');
+
+  toast('Venta guardada');
+  resetFormVenta();
+  switchTab('ventas', 'lista');
+  ge('v-btn-save').disabled = false;
+  ge('v-btn-txt').textContent = 'Guardar Venta';
+}
+
+function resetFormVenta() {
+  ge('v-id').value = ''; ge('v-cliente').value = ''; ge('v-cuit').value = '';
+  ge('v-obra').innerHTML = '<option value="">Sin obra / General</option>';
+  ge('v-oc').value = ''; ge('v-tipo').value = 'A';
+  ge('v-pv').value = '0001'; ge('v-factura').value = '';
+  ge('v-fecha').valueAsDate = new Date(); ge('v-importe').value = '';
+  ge('v-iva').value = '21'; ge('v-condicion').value = 'Contado';
+  if (ge('v-banco')) ge('v-banco').value = '';
+  ge('v-banco-grp').style.display = 'none'; ge('v-desc').value = '';
+  ge('v-total-disp').textContent = '$0,00';
+  ge('v-form-title').textContent = 'Nueva Venta';
+  ge('v-btn-txt').textContent    = 'Guardar Venta';
+  archivos['v'] = null;
+  ge('v-file-preview').style.display = 'none';
+  ge('v-url-adj').value = '';
+}
+
+function editarVenta(id) {
+  const v = G.ventas.find(x => x.id === id);
+  if (!v) return;
+  ge('v-id').value        = v.id;
+  ge('v-cliente').value   = v.clienteId;
+  onClienteChange();
+  setTimeout(() => { ge('v-obra').value = v.obraId || ''; }, 200);
+  ge('v-cuit').value      = v.cuit;
+  ge('v-oc').value        = v.oc;
+  ge('v-tipo').value      = v.tipo;
+  const parts = (v.factura || '').split('-');
+  if (parts.length === 3) ge('v-pv').value = parts[1];
+  ge('v-factura').value   = v.factura;
+  ge('v-fecha').value     = v.fecha;
+  ge('v-importe').value   = v.importe;
+  ge('v-iva').value       = v.iva;
+  ge('v-condicion').value = v.condicion;
+  if (ge('v-banco')) ge('v-banco').value = v.banco || '';
+  ge('v-banco-grp').style.display = v.condicion === 'Transferencia' ? 'flex' : 'none';
+  ge('v-desc').value      = v.descripcion || '';
+  ge('v-url-adj').value   = v.urlAdjunto  || '';
+  if (v.urlAdjunto) {
+    const p = ge('v-file-preview');
+    p.style.display = 'flex';
+    p.innerHTML = `<div class="upload-preview"><i class="fas fa-file-alt" style="color:var(--accent)"></i><span style="flex:1;font-size:12px">Documento adjunto actual</span><a href="${v.urlAdjunto}" target="_blank" class="btn btn-secondary btn-sm">Ver</a></div>`;
+  }
+  calcTotalVenta();
+  ge('v-form-title').textContent = 'Editar Venta';
+  ge('v-btn-txt').textContent    = 'Actualizar Venta';
+  switchTab('ventas', 'nueva');
+}
+
+async function eliminarVentaUI(id) {
+  if (!confirm('Eliminar esta venta?')) return;
+  const { error } = await sb.from('ventas').delete().eq('id', id);
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast('Venta eliminada');
+  cargarVentas();
+}
+
+function exportarVentasPDF() {
+  const doc = new window.jspdf.jsPDF('l', 'mm', 'a4');
+  const lm  = t => t ? String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9 \-\.\,\/\$]/g, '') : '';
+  doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 58, 138);
+  doc.text('Informe de Ventas', 15, 20);
+  doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
+  doc.text('Generado: ' + new Date().toLocaleDateString('es-AR'), 15, 28);
+  const filas = G.ventas.map(v => [v.factura || '-', lm(v.cliente), lm(v.obra || '-'), v.fecha, lm(v.condicion), fmtN(v.total)]);
+  doc.autoTable({ head: [['Factura','Cliente','Obra','Fecha','Condicion','Total']], body: filas, startY: 36, theme: 'striped', styles: { fontSize: 8 }, headStyles: { fillColor: [30, 58, 138] }, columnStyles: { 5: { halign: 'right' } } });
+  doc.save(`Ventas_${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+// ============================================================
+// COBRANZAS
+// ============================================================
+async function cargarCobranzas() {
+  const { data, error } = await sb.from('v_estado_cobros').select('*').order('fecha', { ascending: false });
+  if (error) { toast('Error cobranzas', 'error'); return; }
+  G.cobranzas = (data || []).map(v => ({
+    id:        v.id,
+    cliente:   v.cliente   || '',
+    obra:      v.obra      || '',
+    factura:   v.nro_factura || '',
+    tipo:      v.tipo      || '',
+    total:     Number(v.total)     || 0,
+    cobrado:   Number(v.cobrado)   || 0,
+    pendiente: Number(v.pendiente) || 0,
+    estado:    v.estado    || 'pendiente'
+  }));
+  pags.cob = 1;
+  const totC = G.cobranzas.reduce((s, v) => s + v.cobrado,   0);
+  const totP = G.cobranzas.reduce((s, v) => s + v.pendiente, 0);
+  ge('cob-cobrado').textContent   = fmt(totC);
+  ge('cob-pendiente').textContent = fmt(totP);
+  renderCobranzas();
+}
+
+function renderCobranzas() {
+  const busq = (ge('cob-busq').value || '').toLowerCase();
+  let lista  = verTodasCob ? G.cobranzas : G.cobranzas.filter(v => v.pendiente > 0.01);
+  if (busq) lista = lista.filter(v => v.cliente.toLowerCase().includes(busq));
+  const ini = (pags.cob - 1) * PER_PAG;
+  const pag = lista.slice(ini, ini + PER_PAG);
+  const tb  = ge('cob-tbody');
+  tb.innerHTML = '';
+  if (!pag.length) {
+    tb.innerHTML = '<tr><td colspan="8"><div class="empty-state"><i class="fas fa-check-circle"></i>Sin pendientes</div></td></tr>';
+    return;
+  }
+  pag.forEach(v => {
+    const tr = document.createElement('tr');
+    tr.appendChild(mkTd(`<strong>${v.cliente}</strong>`));
+    tr.appendChild(mkTd(`<span style="color:var(--accent)">${v.tipo}${v.factura}</span>`));
+    tr.appendChild(mkTd(`<span style="color:var(--muted)">${v.obra || '-'}</span>`));
+    tr.appendChild(mkTd(fmt(v.total), 'td-r'));
+    tr.appendChild(mkTd(`<span style="color:var(--success)">${fmt(v.cobrado)}</span>`, 'td-r'));
+    tr.appendChild(mkTd(`<span style="color:var(--danger)">${fmt(v.pendiente)}</span>`, 'td-r'));
+    tr.appendChild(mkTd(`<span class="badge ${badge(v.estado)}">${v.estado}</span>`, 'td-c'));
+    const tdAcc = document.createElement('td');
+    tdAcc.className = 'td-c';
+    if (v.pendiente > 0.01) tdAcc.appendChild(mkBtn('btn-success', 'dollar-sign', () => abrirCobro(v.id, v.cliente, v.tipo + v.factura, v.pendiente)));
+    tr.appendChild(tdAcc);
+    tb.appendChild(tr);
+  });
+  renderPag('cob-pag', lista.length, pags.cob, p => { pags.cob = p; renderCobranzas(); });
+}
+
+function toggleVerTodasCob() {
+  verTodasCob = !verTodasCob;
+  ge('cob-toggle-txt').textContent = verTodasCob ? 'Solo pendientes' : 'Ver todas';
+  renderCobranzas();
+}
+
+function abrirCobro(vid, cliente, factura, pendiente) {
+  ge('mc-vid').value     = vid;
+  ge('mc-importe').value = pendiente.toFixed(2);
+  ge('mc-info').textContent = `${cliente} — ${factura} — Pendiente: ${fmt(pendiente)}`;
+  abrirModal('modal-cobro');
+}
+
+async function confirmarCobro() {
+  const imp = parseFloat(ge('mc-importe').value);
+  if (!imp || imp <= 0) { toast('Importe invalido', 'error'); return; }
+  const { error } = await sb.from('cobros').insert({
+    venta_id: ge('mc-vid').value,
+    fecha:    new Date().toISOString().slice(0, 10),
+    importe:  imp
+  });
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast('Cobro registrado');
+  cerrarModal('modal-cobro');
+  cargarCobranzas();
+  cargarDashboard();
+}
+
+// ============================================================
+// COMPRAS
+// ============================================================
+async function cargarCompras() {
+  const busq = ge('cf-busq').value.trim();
+  let q = sb.from('compras')
+    .select('id,proveedor_id,proveedores(nombre),obra_id,obras(nombre),nro_factura,nro_remito,fecha,importe_neto,iva_pct,iva_monto,total,categoria,descripcion,url_adjunto')
+    .order('fecha', { ascending: false });
+
+  const { data, error } = await q;
+  if (error) { toast('Error compras', 'error'); return; }
+
+  // Calcular pagado por compra
+  const { data: pagosData } = await sb.from('pagos').select('compra_id,importe');
+  const mapaP = {};
+  (pagosData || []).forEach(p => { mapaP[p.compra_id] = (mapaP[p.compra_id] || 0) + Number(p.importe); });
+
+  let compras = (data || []).map(c => ({
+    id:          c.id,
+    proveedor:   c.proveedores?.nombre || '',
+    proveedorId: c.proveedor_id,
+    obra:        c.obras?.nombre       || '',
+    obraId:      c.obra_id             || null,
+    nro_factura: c.nro_factura         || '',
+    fecha:       c.fecha               || '',
+    importe:     Number(c.importe_neto) || 0,
+    iva:         Number(c.iva_pct)     || 0,
+    ivaMonto:    Number(c.iva_monto)   || 0,
+    total:       Number(c.total)       || 0,
+    categoria:   c.categoria           || '',
+    descripcion: c.descripcion         || '',
+    urlAdjunto:  c.url_adjunto         || '',
+    pagado:      mapaP[c.id]           || 0,
+    pendiente:   (Number(c.total) || 0) - (mapaP[c.id] || 0)
+  }));
+
+  if (busq) {
+    const b = busq.toLowerCase();
+    compras = compras.filter(c => c.proveedor.toLowerCase().includes(b) || c.nro_factura.toLowerCase().includes(b));
+  }
+
+  G.compras = compras;
+  pags.compras = 1;
+  renderCompras();
+}
+
+function renderCompras() {
+  const tb = ge('compras-tbody');
+  tb.innerHTML = '';
+  if (!G.compras.length) {
+    tb.innerHTML = '<tr><td colspan="9"><div class="empty-state"><i class="fas fa-cart-shopping"></i>Sin compras</div></td></tr>';
+    return;
+  }
+  const ini = (pags.compras - 1) * PER_PAG;
+  G.compras.slice(ini, ini + PER_PAG).forEach(c => {
+    const est = c.pagado >= c.total ? 'pagado' : c.pagado > 0 ? 'parcial' : 'pendiente';
+    const tr  = document.createElement('tr');
+    tr.appendChild(mkTd(`<strong>${c.proveedor || '-'}</strong>`));
+    tr.appendChild(mkTd(`<span style="color:var(--muted)">${c.obra || 'General'}</span>`));
+    tr.appendChild(mkTd(`<span style="color:var(--accent)">${c.nro_factura || '-'}</span>`));
+    tr.appendChild(mkTd(c.fecha));
+    tr.appendChild(mkTd(`<span class="badge badge-gray">${c.categoria || '-'}</span>`));
+    tr.appendChild(mkTd(`<strong>${fmt(c.total)}</strong>`, 'td-r'));
+    tr.appendChild(mkTd(`<span class="badge ${badge(est)}">${est}</span>`, 'td-c'));
+    const tdDoc = document.createElement('td');
+    tdDoc.className = 'td-c';
+    if (c.urlAdjunto) {
+      const a = document.createElement('a');
+      a.href = c.urlAdjunto; a.target = '_blank';
+      a.className = 'btn btn-secondary btn-sm';
+      a.innerHTML = '<i class="fas fa-file-alt"></i>';
+      tdDoc.appendChild(a);
+    } else { tdDoc.innerHTML = '<span style="color:var(--muted);font-size:11px">-</span>'; }
+    tr.appendChild(tdDoc);
+    const tdAcc = document.createElement('td');
+    tdAcc.className = 'td-c';
+    tdAcc.style.whiteSpace = 'nowrap';
+    if (c.pendiente > 0.01) {
+      tdAcc.appendChild(mkBtn('btn-success', 'dollar-sign', () => abrirPago(c.id, c.proveedor, c.pendiente)));
+      tdAcc.appendChild(document.createTextNode(' '));
+    }
+    tdAcc.appendChild(mkBtn('btn-danger', 'trash', () => eliminarCompraUI(c.id)));
+    tr.appendChild(tdAcc);
+    tb.appendChild(tr);
+  });
+  renderPag('compras-pag', G.compras.length, pags.compras, p => { pags.compras = p; renderCompras(); });
+}
+
+function calcTotalCompra() {
+  const imp = parseFloat(ge('cp-importe').value) || 0;
+  const iva = parseFloat(ge('cp-iva').value)     || 0;
+  ge('cp-total-disp').textContent = fmt(imp + imp * iva / 100);
+}
+
+async function guardarCompraUI() {
+  const provId  = ge('cp-prov').value;
+  const fecha   = ge('cp-fecha').value;
+  const importe = parseFloat(ge('cp-importe').value);
+  if (!provId || !fecha || !importe) { toast('Completa los campos obligatorios', 'error'); return; }
+
+  ge('cp-btn-save').disabled = true;
+
+  const ivaPct   = parseFloat(ge('cp-iva').value) || 0;
+  const ivaMonto = +(importe * ivaPct / 100).toFixed(2);
+  const total    = +(importe + ivaMonto).toFixed(2);
+
+  const payload = {
+    proveedor_id: provId,
+    obra_id:      ge('cp-obra').value    || null,
+    nro_factura:  ge('cp-factura').value || null,
+    nro_remito:   ge('cp-remito').value  || null,
+    fecha:        fecha,
+    importe_neto: importe,
+    iva_pct:      ivaPct,
+    iva_monto:    ivaMonto,
+    total:        total,
+    categoria:    ge('cp-cat').value     || null,
+    descripcion:  ge('cp-desc').value    || null,
+    url_adjunto:  ge('cp-url-adj').value || null
+  };
+
+  const editId = ge('cp-id').value;
+  let error, data;
+  if (editId) {
+    ({ error } = await sb.from('compras').update(payload).eq('id', editId));
+    data = { id: editId };
+  } else {
+    ({ data, error } = await sb.from('compras').insert(payload).select().single());
+  }
+
+  if (error) { toast('Error: ' + error.message, 'error'); ge('cp-btn-save').disabled = false; return; }
+
+  if (archivos['cp'] && data?.id) await subirAdjunto('cp', data.id, 'compras');
+
+  toast('Compra guardada');
+  resetFormCompra();
+  switchTab('compras', 'lista');
+  ge('cp-btn-save').disabled = false;
+}
+
+function resetFormCompra() {
+  ge('cp-id').value = ''; ge('cp-prov').value = ''; ge('cp-obra').value = '';
+  ge('cp-factura').value = ''; ge('cp-remito').value = '';
+  ge('cp-fecha').valueAsDate = new Date(); ge('cp-cat').value = '';
+  ge('cp-importe').value = ''; ge('cp-iva').value = '21'; ge('cp-desc').value = '';
+  ge('cp-total-disp').textContent = '$0,00';
+  archivos['cp'] = null;
+  ge('cp-file-preview').style.display = 'none';
+  ge('cp-url-adj').value = '';
+}
+
+async function eliminarCompraUI(id) {
+  if (!confirm('Eliminar esta compra?')) return;
+  const { error } = await sb.from('compras').delete().eq('id', id);
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast('Compra eliminada');
+  cargarCompras();
+}
+
+// ============================================================
+// PAGOS
+// ============================================================
+async function cargarPagos() {
+  const { data: compras } = await sb.from('compras').select('id,proveedor_id,proveedores(nombre),obra_id,obras(nombre),nro_factura,fecha,total').order('fecha', { ascending: false });
+  const { data: pagos }   = await sb.from('pagos').select('compra_id,importe');
+  const mapaP = {};
+  (pagos || []).forEach(p => { mapaP[p.compra_id] = (mapaP[p.compra_id] || 0) + Number(p.importe); });
+
+  G.pagos = (compras || []).map(c => ({
+    id:          c.id,
+    proveedor:   c.proveedores?.nombre || '',
+    obra:        c.obras?.nombre       || '',
+    nro_factura: c.nro_factura         || '',
+    fecha:       c.fecha               || '',
+    total:       Number(c.total)       || 0,
+    pagado:      mapaP[c.id]           || 0,
+    pendiente:   (Number(c.total) || 0) - (mapaP[c.id] || 0)
+  }));
+
+  const totP = G.pagos.reduce((s, c) => s + c.pagado,    0);
+  const totD = G.pagos.reduce((s, c) => s + c.pendiente, 0);
+  ge('pag-pagado').textContent   = fmt(totP);
+  ge('pag-adeudado').textContent = fmt(totD);
+  renderPagos();
+}
+
+function renderPagos() {
+  const tb = ge('pag-tbody');
+  tb.innerHTML = '';
+  G.pagos.forEach(c => {
+    const est = c.pagado >= c.total ? 'pagado' : c.pagado > 0 ? 'parcial' : 'pendiente';
+    const tr  = document.createElement('tr');
+    tr.appendChild(mkTd(`<strong>${c.proveedor}</strong>`));
+    tr.appendChild(mkTd(`<span style="color:var(--accent)">${c.nro_factura || '-'}</span>`));
+    tr.appendChild(mkTd(`<span style="color:var(--muted)">${c.obra || 'General'}</span>`));
+    tr.appendChild(mkTd(fmt(c.total), 'td-r'));
+    tr.appendChild(mkTd(`<span style="color:var(--success)">${fmt(c.pagado)}</span>`, 'td-r'));
+    tr.appendChild(mkTd(`<span style="color:var(--danger)">${fmt(c.pendiente)}</span>`, 'td-r'));
+    tr.appendChild(mkTd(`<span class="badge ${badge(est)}">${est}</span>`, 'td-c'));
+    const tdAcc = document.createElement('td');
+    tdAcc.className = 'td-c';
+    if (c.pendiente > 0.01) tdAcc.appendChild(mkBtn('btn-success', 'dollar-sign', () => abrirPago(c.id, c.proveedor, c.pendiente)));
+    tr.appendChild(tdAcc);
+    tb.appendChild(tr);
+  });
+}
+
+function abrirPago(cid, prov, pendiente) {
+  ge('mp-cid').value     = cid;
+  ge('mp-importe').value = pendiente.toFixed(2);
+  ge('mp-info').textContent = `${prov} — Deuda: ${fmt(pendiente)}`;
+  abrirModal('modal-pago');
+}
+
+async function confirmarPago() {
+  const imp = parseFloat(ge('mp-importe').value);
+  if (!imp || imp <= 0) { toast('Importe invalido', 'error'); return; }
+  const { error } = await sb.from('pagos').insert({
+    compra_id:  ge('mp-cid').value,
+    fecha:      new Date().toISOString().slice(0, 10),
+    importe:    imp,
+    condicion:  ge('mp-cond').value,
+    banco:      ge('mp-banco').value  || null,
+    nro_cheque: ge('mp-cheque').value || null
+  });
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast('Pago registrado');
+  cerrarModal('modal-pago');
+  cargarPagos();
+  cargarDashboard();
+}
+
+// ============================================================
+// EMPLEADOS
+// ============================================================
+async function cargarEmpleados() {
+  const { data } = await sb.from('empleados').select('*').order('apellido');
+  G.empleados = data || [];
+  renderEmpleados();
+}
+
+function renderEmpleados() {
+  const tb = ge('emp-tbody');
+  tb.innerHTML = '';
+  if (!G.empleados.length) {
+    tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><i class="fas fa-hard-hat"></i>Sin empleados</div></td></tr>';
+    return;
+  }
+  G.empleados.forEach(e => {
+    const obra = G.obras.find(o => o.id === e.obra_id);
+    const tr   = document.createElement('tr');
+    tr.appendChild(mkTd(`<strong>${e.apellido}, ${e.nombre}</strong>`));
+    tr.appendChild(mkTd(`<span style="color:var(--muted)">${e.dni || '-'} / ${e.cuil || '-'}</span>`));
+    tr.appendChild(mkTd(e.categoria || '-'));
+    tr.appendChild(mkTd(obra?.nombre || 'General'));
+    tr.appendChild(mkTd(e.fecha_ingreso || '-'));
+    tr.appendChild(mkTd(`<span class="badge ${e.activo ? 'badge-green' : 'badge-gray'}">${e.activo ? 'Activo' : 'Inactivo'}</span>`, 'td-c'));
+    tb.appendChild(tr);
+  });
+}
+
+// ============================================================
+// STOCK
+// ============================================================
+async function cargarStock() {
+  const { data } = await sb.from('materiales').select('*').order('nombre');
+  G.materiales = data || [];
+  renderStock();
+}
+
+function renderStock() {
+  const tb = ge('stock-tbody');
+  tb.innerHTML = '';
+  if (!G.materiales.length) {
+    tb.innerHTML = '<tr><td colspan="7"><div class="empty-state"><i class="fas fa-boxes-stacked"></i>Sin materiales</div></td></tr>';
+    return;
+  }
+  G.materiales.forEach(m => {
+    const bajo  = m.stock_actual < m.stock_minimo;
+    const color = bajo ? 'var(--danger)' : 'var(--success)';
+    const tr    = document.createElement('tr');
+    tr.appendChild(mkTd(`<strong>${m.nombre}</strong>`));
+    tr.appendChild(mkTd(m.categoria || '-'));
+    tr.appendChild(mkTd(`<span style="color:var(--muted)">${m.unidad}</span>`));
+    tr.appendChild(mkTd(`<strong style="color:${color}">${fmtN(m.stock_actual)}</strong>`, 'td-r'));
+    tr.appendChild(mkTd(`<span style="color:var(--muted)">${fmtN(m.stock_minimo)}</span>`, 'td-r'));
+    tr.appendChild(mkTd(m.precio_ref ? fmt(m.precio_ref) : '-', 'td-r'));
+    tr.appendChild(mkTd(`<span class="badge ${bajo ? 'badge-red' : 'badge-green'}">${bajo ? 'Bajo' : 'OK'}</span>`, 'td-c'));
+    tb.appendChild(tr);
+  });
+}
+
+// ============================================================
+// CLIENTES
+// ============================================================
+async function cargarClientesTabla() {
+  const { data } = await sb.from('clientes').select('*').order('nombre');
+  renderClientesTabla(data || []);
+}
+
+function renderClientesTabla(data) {
+  const tb = ge('cli-tbody');
+  tb.innerHTML = '';
+  if (!data.length) {
+    tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><i class="fas fa-building-user"></i>Sin clientes</div></td></tr>';
+    return;
+  }
+  data.forEach(c => {
+    const tr = document.createElement('tr');
+    tr.appendChild(mkTd(`<strong>${c.nombre}</strong>`));
+    tr.appendChild(mkTd(`<span style="color:var(--muted)">${c.cuit || '-'}</span>`));
+    tr.appendChild(mkTd(c.email    || '-'));
+    tr.appendChild(mkTd(c.telefono || '-'));
+    tr.appendChild(mkTd(`<span class="badge ${c.activo ? 'badge-green' : 'badge-gray'}">${c.activo ? 'Activo' : 'Inactivo'}</span>`, 'td-c'));
+    const tdAcc = document.createElement('td');
+    tdAcc.className = 'td-c';
+    tdAcc.appendChild(mkBtn('btn-secondary', 'pen', () => editarClienteUI(c.id)));
+    tr.appendChild(tdAcc);
+    tb.appendChild(tr);
+  });
+}
+
+async function cargarObrasTabla() {
+  const { data } = await sb.from('obras').select('id,nombre,cliente_id,clientes(nombre),estado,fecha_inicio,fecha_fin,presupuesto,direccion').order('nombre');
+  const tb = ge('obras-tbody');
+  tb.innerHTML = '';
+  (data || []).forEach(o => {
+    const bcO = o.estado === 'activa' ? 'badge-green' : o.estado === 'pausada' ? 'badge-yellow' : 'badge-gray';
+    const tr  = document.createElement('tr');
+    tr.appendChild(mkTd(`<strong>${o.nombre}</strong>`));
+    tr.appendChild(mkTd(o.clientes?.nombre || '-'));
+    tr.appendChild(mkTd(`<span style="color:var(--muted)">${o.direccion || '-'}</span>`));
+    tr.appendChild(mkTd(o.fecha_inicio || '-'));
+    tr.appendChild(mkTd(o.fecha_fin    || '-'));
+    tr.appendChild(mkTd(o.presupuesto ? fmt(o.presupuesto) : '-', 'td-r'));
+    tr.appendChild(mkTd(`<span class="badge ${bcO}">${o.estado}</span>`, 'td-c'));
+    const tdAcc = document.createElement('td');
+    tdAcc.className = 'td-c';
+    tdAcc.appendChild(mkBtn('btn-secondary', 'pen', () => editarObraUI(o.id)));
+    tr.appendChild(tdAcc);
+    tb.appendChild(tr);
+  });
+}
+
+function abrirModalCliente() {
+  ['mcl-id','mcl-nombre','mcl-cuit','mcl-email','mcl-tel','mcl-dir'].forEach(id => { ge(id).value = ''; });
+  ge('mcl-title').textContent = 'Nuevo Cliente';
+  abrirModal('modal-cliente');
+}
+
+async function editarClienteUI(id) {
+  const { data } = await sb.from('clientes').select('*').eq('id', id).single();
+  if (!data) return;
+  ge('mcl-id').value    = data.id;
+  ge('mcl-nombre').value = data.nombre    || '';
+  ge('mcl-cuit').value  = data.cuit       || '';
+  ge('mcl-email').value = data.email      || '';
+  ge('mcl-tel').value   = data.telefono   || '';
+  ge('mcl-dir').value   = data.direccion  || '';
+  ge('mcl-title').textContent = 'Editar Cliente';
+  abrirModal('modal-cliente');
+}
+
+async function confirmarCliente() {
+  const nombre = ge('mcl-nombre').value;
+  if (!nombre) { toast('El nombre es obligatorio', 'error'); return; }
+  const payload = { nombre, cuit: ge('mcl-cuit').value || null, email: ge('mcl-email').value || null, telefono: ge('mcl-tel').value || null, direccion: ge('mcl-dir').value || null, activo: true };
+  const id = ge('mcl-id').value;
+  let error;
+  if (id) ({ error } = await sb.from('clientes').update(payload).eq('id', id));
+  else    ({ error } = await sb.from('clientes').insert(payload));
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast('Cliente guardado');
+  cerrarModal('modal-cliente');
+  cargarClientesTabla();
+  refrescarClientes();
+}
+
+function abrirModalObra() {
+  ['mob-id','mob-nombre','mob-inicio','mob-fin','mob-pres','mob-dir'].forEach(id => { ge(id).value = ''; });
+  ge('mob-cliente').value = '';
+  ge('mob-estado').value  = 'activa';
+  ge('mob-title').textContent = 'Nueva Obra';
+  abrirModal('modal-obra');
+}
+
+async function editarObraUI(id) {
+  const { data } = await sb.from('obras').select('*').eq('id', id).single();
+  if (!data) return;
+  ge('mob-id').value     = data.id;
+  ge('mob-nombre').value = data.nombre       || '';
+  ge('mob-cliente').value = data.cliente_id  || '';
+  ge('mob-estado').value = data.estado       || 'activa';
+  ge('mob-inicio').value = data.fecha_inicio || '';
+  ge('mob-fin').value    = data.fecha_fin    || '';
+  ge('mob-pres').value   = data.presupuesto  || '';
+  ge('mob-dir').value    = data.direccion    || '';
+  ge('mob-title').textContent = 'Editar Obra';
+  abrirModal('modal-obra');
+}
+
+async function confirmarObra() {
+  if (!ge('mob-nombre').value || !ge('mob-cliente').value) { toast('Nombre y cliente son obligatorios', 'error'); return; }
+  const payload = { nombre: ge('mob-nombre').value, cliente_id: ge('mob-cliente').value, estado: ge('mob-estado').value, fecha_inicio: ge('mob-inicio').value || null, fecha_fin: ge('mob-fin').value || null, presupuesto: ge('mob-pres').value ? Number(ge('mob-pres').value) : null, direccion: ge('mob-dir').value || null };
+  const id = ge('mob-id').value;
+  let error;
+  if (id) ({ error } = await sb.from('obras').update(payload).eq('id', id));
+  else    ({ error } = await sb.from('obras').insert(payload));
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast('Obra guardada');
+  cerrarModal('modal-obra');
+  cargarObrasTabla();
+  refrescarObras();
+}
+
+// ============================================================
+// PROVEEDORES
+// ============================================================
+async function cargarProveedores() {
+  const { data } = await sb.from('proveedores').select('*').order('nombre');
+  G.proveedores = data || [];
+  renderProveedores();
+}
+
+function renderProveedores() {
+  const tb = ge('prov-tbody');
+  tb.innerHTML = '';
+  if (!G.proveedores.length) {
+    tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><i class="fas fa-truck"></i>Sin proveedores</div></td></tr>';
+    return;
+  }
+  G.proveedores.forEach(p => {
+    const tr = document.createElement('tr');
+    tr.appendChild(mkTd(`<strong>${p.nombre}</strong>`));
+    tr.appendChild(mkTd(`<span style="color:var(--muted)">${p.cuit || '-'}</span>`));
+    tr.appendChild(mkTd(p.rubro    || '-'));
+    tr.appendChild(mkTd(p.telefono || '-'));
+    tr.appendChild(mkTd(`<span class="badge ${p.activo ? 'badge-green' : 'badge-gray'}">${p.activo ? 'Activo' : 'Inactivo'}</span>`, 'td-c'));
+    const tdAcc = document.createElement('td');
+    tdAcc.className = 'td-c';
+    tdAcc.appendChild(mkBtn('btn-secondary', 'pen', () => editarProveedorUI(p.id)));
+    tr.appendChild(tdAcc);
+    tb.appendChild(tr);
+  });
+}
+
+function abrirModalProveedor() {
+  ['mpv-id','mpv-nombre','mpv-cuit','mpv-rubro','mpv-email','mpv-tel','mpv-banco','mpv-cbu'].forEach(id => { ge(id).value = ''; });
+  ge('mpv-title').textContent = 'Nuevo Proveedor';
+  abrirModal('modal-prov');
+}
+
+async function editarProveedorUI(id) {
+  const { data } = await sb.from('proveedores').select('*').eq('id', id).single();
+  if (!data) return;
+  ge('mpv-id').value    = data.id;
+  ge('mpv-nombre').value = data.nombre   || '';
+  ge('mpv-cuit').value  = data.cuit      || '';
+  ge('mpv-rubro').value = data.rubro     || '';
+  ge('mpv-email').value = data.email     || '';
+  ge('mpv-tel').value   = data.telefono  || '';
+  ge('mpv-banco').value = data.banco     || '';
+  ge('mpv-cbu').value   = data.cbu       || '';
+  ge('mpv-title').textContent = 'Editar Proveedor';
+  abrirModal('modal-prov');
+}
+
+async function confirmarProveedor() {
+  if (!ge('mpv-nombre').value) { toast('El nombre es obligatorio', 'error'); return; }
+  const payload = { nombre: ge('mpv-nombre').value, cuit: ge('mpv-cuit').value || null, rubro: ge('mpv-rubro').value || null, email: ge('mpv-email').value || null, telefono: ge('mpv-tel').value || null, banco: ge('mpv-banco').value || null, cbu: ge('mpv-cbu').value || null, activo: true };
+  const id = ge('mpv-id').value;
+  let error;
+  if (id) ({ error } = await sb.from('proveedores').update(payload).eq('id', id));
+  else    ({ error } = await sb.from('proveedores').insert(payload));
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast('Proveedor guardado');
+  cerrarModal('modal-prov');
+  cargarProveedores();
+  refrescarProveedores();
+}
+
+// ============================================================
+// USUARIOS (solo admin)
+// ============================================================
+async function cargarUsuarios() {
+  const { data } = await sb.from('perfiles').select('*').order('nombre');
+  const tb = ge('usuarios-tbody');
+  tb.innerHTML = '';
+  (data || []).forEach(u => {
+    const tr = document.createElement('tr');
+    tr.appendChild(mkTd(`<strong>${u.nombre || '-'}</strong>`));
+    tr.appendChild(mkTd(`<span style="color:var(--muted)">${u.email || '-'}</span>`));
+    const tdRol = document.createElement('td');
+    const sel = document.createElement('select');
+    sel.className = 'btn btn-secondary btn-sm';
+    sel.style.padding = '4px 8px';
+    ['admin','vendedor','compras','rrhh','contador'].forEach(r => {
+      const opt = new Option(r.charAt(0).toUpperCase() + r.slice(1), r);
+      if (r === u.rol) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.onchange = async () => {
+      await sb.from('perfiles').update({ rol: sel.value }).eq('id', u.id);
+      toast('Rol actualizado');
+    };
+    tdRol.appendChild(sel);
+    tr.appendChild(tdRol);
+    tr.appendChild(mkTd(`<span class="badge ${u.activo ? 'badge-green' : 'badge-gray'}">${u.activo ? 'Activo' : 'Inactivo'}</span>`, 'td-c'));
+    const tdAcc = document.createElement('td');
+    tdAcc.className = 'td-c';
+    if (u.id !== G.user?.id) {
+      tdAcc.appendChild(mkBtn(u.activo ? 'btn-danger' : 'btn-success', u.activo ? 'ban' : 'check', async () => {
+        await sb.from('perfiles').update({ activo: !u.activo }).eq('id', u.id);
+        toast(u.activo ? 'Usuario desactivado' : 'Usuario activado');
+        cargarUsuarios();
+      }));
+    }
+    tr.appendChild(tdAcc);
+    tb.appendChild(tr);
+  });
+}
+
+// ============================================================
+// CONFIG
+// ============================================================
+async function cargarConfigUI() {
+  const { data } = await sb.from('config').select('clave,valor');
+  G.config = (data || []).reduce((obj, r) => { obj[r.clave] = r.valor; return obj; }, {});
+  ge('cfg-nombre').value = G.config.empresa_nombre    || '';
+  ge('cfg-cuit').value   = G.config.empresa_cuit      || '';
+  ge('cfg-iva').value    = G.config.iva_default        || '21';
+  ge('cfg-dir').value    = G.config.empresa_direccion  || '';
+  ge('cfg-logo').value   = G.config.logo_url           || '';
+  if (G.config.empresa_nombre) ge('sb-empresa').textContent = G.config.empresa_nombre;
+}
+
+async function guardarConfigUI() {
+  const items = {
+    empresa_nombre:    ge('cfg-nombre').value,
+    empresa_cuit:      ge('cfg-cuit').value,
+    iva_default:       ge('cfg-iva').value,
+    empresa_direccion: ge('cfg-dir').value,
+    logo_url:          ge('cfg-logo').value
+  };
+  for (const [clave, valor] of Object.entries(items)) {
+    await sb.from('config').update({ valor }).eq('clave', clave);
+  }
+  toast('Configuracion guardada');
+  if (items.empresa_nombre) ge('sb-empresa').textContent = items.empresa_nombre;
+}
+
+// ============================================================
+// UPLOAD A SUPABASE STORAGE
+// ============================================================
+async function subirAdjunto(pfx, registroId, tabla) {
+  const file = archivos[pfx];
+  if (!file) return;
+  const ext  = file.name.split('.').pop();
+  const path = `${tabla}/${registroId}_${Date.now()}.${ext}`;
+  const { error: uploadError } = await sb.storage.from('documentos').upload(path, file, { upsert: true, contentType: file.type });
+  if (uploadError) { toast('Error subiendo archivo: ' + uploadError.message, 'error'); return; }
+  const { data: { publicUrl } } = sb.storage.from('documentos').getPublicUrl(path);
+  await sb.from(tabla).update({ url_adjunto: publicUrl }).eq('id', registroId);
+  ge(pfx + '-url-adj').value = publicUrl;
+  archivos[pfx] = null;
+}
+
+// ============================================================
+// EVENTOS UI
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  ge('v-fecha').valueAsDate  = new Date();
+  ge('cp-fecha').valueAsDate = new Date();
+
+  // Ventas form events
+  ge('v-cliente').addEventListener('change',  onClienteChange);
+  ge('v-tipo').addEventListener('change',     onTipoChange);
+  ge('v-condicion').addEventListener('change', onCondVChange);
+  ge('v-pv').addEventListener('change',       generarNroFactura);
+  ge('v-importe').addEventListener('input',   calcTotalVenta);
+  ge('v-iva').addEventListener('change',      calcTotalVenta);
+  ge('v-btn-save').addEventListener('click',  guardarVentaUI);
+
+  // Compras form events
+  ge('cp-importe').addEventListener('input',  calcTotalCompra);
+  ge('cp-iva').addEventListener('change',     calcTotalCompra);
+  ge('cp-btn-save').addEventListener('click', guardarCompraUI);
+
+  // Busqueda con debounce
+  ge('vf-busq').addEventListener('input', debounce(cargarVentas, 400));
+  ge('cf-busq').addEventListener('input', debounce(cargarCompras, 400));
+  ge('cob-busq').addEventListener('input', renderCobranzas);
+
+  // File uploads
+  ge('v-file').addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    if (f.size > 10 * 1024 * 1024) { toast('El archivo supera 10 MB', 'error'); return; }
+    archivos['v'] = f;
+    const icon = f.type === 'application/pdf' ? 'fa-file-pdf' : 'fa-file-image';
+    const p    = ge('v-file-preview');
+    p.style.display = 'flex';
+    p.innerHTML = `<div class="upload-preview"><i class="fas ${icon}" style="color:var(--accent)"></i><span style="flex:1;font-size:12px;">${f.name}</span></div>`;
+  });
+
+  ge('cp-file').addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    if (f.size > 10 * 1024 * 1024) { toast('El archivo supera 10 MB', 'error'); return; }
+    archivos['cp'] = f;
+    const icon = f.type === 'application/pdf' ? 'fa-file-pdf' : 'fa-file-image';
+    const p    = ge('cp-file-preview');
+    p.style.display = 'flex';
+    p.innerHTML = `<div class="upload-preview"><i class="fas ${icon}" style="color:var(--accent)"></i><span style="flex:1;font-size:12px;">${f.name}</span></div>`;
+  });
+
+  // Iniciar auth
+  initAuth();
+});
+
+// Exponer funciones globales necesarias para onclick del HTML
+window.switchTab        = switchTab;
+window.toggleVerTodasCob = toggleVerTodasCob;
+window.abrirModalCliente = abrirModalCliente;
+window.abrirModalObra    = abrirModalObra;
+window.abrirModalProveedor = abrirModalProveedor;
+window.confirmarCliente  = confirmarCliente;
+window.confirmarObra     = confirmarObra;
+window.confirmarProveedor = confirmarProveedor;
+window.confirmarCobro    = confirmarCobro;
+window.confirmarPago     = confirmarPago;
+window.cerrarModal       = cerrarModal;
+window.exportarVentasPDF = exportarVentasPDF;
+window.guardarConfigUI   = guardarConfigUI;
+window.logout            = logout;
+</script>
+</body>
+</html>
