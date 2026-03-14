@@ -1957,8 +1957,10 @@ document.addEventListener('DOMContentLoaded', () => {
   ge('v-tipo').addEventListener('change',     onTipoChange);
   ge('v-condicion').addEventListener('change', onCondVChange);
   ge('v-pv').addEventListener('change',       generarNroFactura);
-  ge('v-importe').addEventListener('input',   calcTotalVenta);
-  ge('v-iva').addEventListener('change',      calcTotalVenta);
+document.querySelector('#v-importe').addEventListener('input',  calcTotalVenta);
+document.querySelector('#v-importe').addEventListener('change', calcTotalVenta);
+document.querySelector('#v-iva').addEventListener('change', calcTotalVenta);
+document.querySelector('#v-iva').addEventListener('input',  calcTotalVenta);
   ge('v-btn-save').addEventListener('click',  guardarVentaUI);
 
   // Compras form events
