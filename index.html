@@ -828,15 +828,25 @@ document.querySelectorAll('.nav-item[data-page]').forEach(item => {
 
 function switchTab(mod, tab) {
   if (mod === 'ventas') {
-    ge('ventas-lista').style.display  = tab === 'lista' ? 'block' : 'none';
-    ge('ventas-nueva').style.display  = tab === 'nueva' ? 'block' : 'none';
+    const lista = ge('ventas-lista');
+    const nueva = ge('ventas-nueva');
+    lista.style.display = tab === 'lista' ? 'block' : 'none';
+    nueva.style.display = 'block';
+    nueva.style.visibility = tab === 'nueva' ? 'visible' : 'hidden';
+    nueva.style.height = tab === 'nueva' ? 'auto' : '0';
+    nueva.style.overflow = tab === 'nueva' ? 'visible' : 'hidden';
     const btns = document.querySelectorAll('#page-ventas .tab-btn');
     btns[0].classList.toggle('active', tab === 'lista');
     btns[1].classList.toggle('active', tab === 'nueva');
     if (tab === 'lista') cargarVentas();
   } else if (mod === 'compras') {
-    ge('compras-lista').style.display = tab === 'lista' ? 'block' : 'none';
-    ge('compras-nueva').style.display = tab === 'nueva' ? 'block' : 'none';
+    const lista2 = ge('compras-lista');
+    const nueva2 = ge('compras-nueva');
+    lista2.style.display = tab === 'lista' ? 'block' : 'none';
+    nueva2.style.display = 'block';
+    nueva2.style.visibility = tab === 'nueva' ? 'visible' : 'hidden';
+    nueva2.style.height = tab === 'nueva' ? 'auto' : '0';
+    nueva2.style.overflow = tab === 'nueva' ? 'visible' : 'hidden';
     const btns = document.querySelectorAll('#page-compras .tab-btn');
     btns[0].classList.toggle('active', tab === 'lista');
     btns[1].classList.toggle('active', tab === 'nueva');
