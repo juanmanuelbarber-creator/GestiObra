@@ -321,10 +321,10 @@ tbody tr:hover{background:var(--bg3);}
             <div class="form-group"><label>Punto de venta</label><input type="text" id="v-pv" value="0001" maxlength="4"></div>
             <div class="form-group"><label>N. Factura</label><input type="text" id="v-factura" placeholder="Se genera automatico" readonly></div>
             <div class="form-group"><label>Fecha *</label><input type="date" id="v-fecha" required></div>
-            <div class="form-group"><label>Importe sin IVA *</label><input type="number" step="0.01" id="v-importe" required></div>
+            <div class="form-group"><label>Importe sin IVA *</label><input type="number" step="0.01" id="v-importe" oninput="calcTotalVenta()" required></div>
             <div class="form-group">
               <label>IVA %</label>
-              <select id="v-iva"><option value="21">21%</option><option value="10.5">10.5%</option><option value="0">0%</option></select>
+              <select id="v-iva" onchange="calcTotalVenta()"><option value="21">21%</option><option value="10.5">10.5%</option><option value="0">0%</option></select>
             </div>
             <div class="form-group">
               <label>Condicion *</label>
