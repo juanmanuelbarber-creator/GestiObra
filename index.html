@@ -1270,10 +1270,10 @@ function editarVenta(id) {
     p.style.display = 'flex';
     p.innerHTML = `<div class="upload-preview"><i class="fas fa-file-alt" style="color:var(--accent)"></i><span style="flex:1;font-size:12px">Documento adjunto actual</span><a href="${v.urlAdjunto}" target="_blank" class="btn btn-secondary btn-sm">Ver</a></div>`;
   }
-  calcTotalVenta();
-  ge('v-form-title').textContent = 'Editar Venta';
-  ge('v-btn-txt').textContent    = 'Actualizar Venta';
-  switchTab('ventas', 'nueva');
+setTimeout(() => calcTotalVenta(), 100);
+ge('v-form-title').textContent = 'Editar Venta';
+ge('v-btn-txt').textContent    = 'Actualizar Venta';
+switchTab('ventas', 'nueva');
 }
 
 async function eliminarVentaUI(id) {
