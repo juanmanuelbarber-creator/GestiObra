@@ -319,7 +319,7 @@ tbody tr:hover{background:var(--bg3);}
               </select>
             </div>
             <div class="form-group"><label>Punto de venta</label><input type="text" id="v-pv" value="0001" maxlength="4"></div>
-            <div class="form-group"><label>N. Factura</label><input type="text" id="v-factura" placeholder="Se genera automatico" readonly></div>
+            <div class="form-group"><label>N. Factura</label><input type="text" id="v-factura" id="v-factura" placeholder="Ej: A-0001-000001"></div>
             <div class="form-group"><label>Fecha *</label><input type="date" id="v-fecha" required></div>
             <div class="form-group"><label>Importe sin IVA *</label><input type="number" step="0.01" id="v-importe" oninput="calcTotalVenta()" required></div>
             <div class="form-group">
@@ -1147,6 +1147,7 @@ function onTipoChange() {
   generarNroFactura();
   const esX = ge('v-tipo').value === 'X';
   ge('v-iva').value = esX ? '0' : '21';
+  ge('v-factura').readOnly = esX ? false : false;
   calcTotalVenta();
 }
 
