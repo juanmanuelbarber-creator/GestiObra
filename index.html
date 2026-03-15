@@ -1245,35 +1245,38 @@ function resetFormVenta() {
 }
 
 function editarVenta(id) {
-  const v = G.ventas.find(x => x.id === id);
+  const v  = G.ventas.find(x => x.id === id);
   if (!v) return;
-  ge('v-id').value        = v.id;
-  ge('v-cliente').value   = v.clienteId;
+  const qs = s => document.querySelector(s);
+
+  qs('#v-id').value        = v.id;
+  qs('#v-cliente').value   = v.clienteId;
   onClienteChange();
-  setTimeout(() => { ge('v-obra').value = v.obraId || ''; }, 200);
-  ge('v-cuit').value      = v.cuit;
-  ge('v-oc').value        = v.oc;
-  ge('v-tipo').value      = v.tipo;
+  setTimeout(() => { qs('#v-obra').value = v.obraId || ''; }, 200);
+  qs('#v-cuit').value      = v.cuit;
+  qs('#v-oc').value        = v.oc;
+  qs('#v-tipo').value      = v.tipo;
   const parts = (v.factura || '').split('-');
-  if (parts.length === 3) ge('v-pv').value = parts[1];
-  ge('v-factura').value   = v.factura;
-  ge('v-fecha').value     = v.fecha;
-  ge('v-importe').value   = v.importe;
-  ge('v-iva').value       = v.iva;
-  ge('v-condicion').value = v.condicion;
-  if (ge('v-banco')) ge('v-banco').value = v.banco || '';
-  ge('v-banco-grp').style.display = v.condicion === 'Transferencia' ? 'flex' : 'none';
-  ge('v-desc').value      = v.descripcion || '';
-  ge('v-url-adj').value   = v.urlAdjunto  || '';
+  if (parts.length === 3) qs('#v-pv').value = parts[1];
+  qs('#v-factura').value   = v.factura;
+  qs('#v-fecha').value     = v.fecha;
+  qs('#v-importe').value   = v.importe;
+  qs('#v-iva').value       = String(v.iva);
+  qs('#v-condicion').value = v.condicion;
+  const banco = qs('#v-banco');
+  if (banco) banco.value   = v.banco || '';
+  qs('#v-banco-grp').style.display = v.condicion === 'Transferencia' ? 'flex' : 'none';
+  qs('#v-desc').value      = v.descripcion || '';
+  qs('#v-url-adj').value   = v.urlAdjunto  || '';
   if (v.urlAdjunto) {
-    const p = ge('v-file-preview');
+    const p = qs('#v-file-preview');
     p.style.display = 'flex';
     p.innerHTML = `<div class="upload-preview"><i class="fas fa-file-alt" style="color:var(--accent)"></i><span style="flex:1;font-size:12px">Documento adjunto actual</span><a href="${v.urlAdjunto}" target="_blank" class="btn btn-secondary btn-sm">Ver</a></div>`;
   }
-setTimeout(() => calcTotalVenta(), 100);
-ge('v-form-title').textContent = 'Editar Venta';
-ge('v-btn-txt').textContent    = 'Actualizar Venta';
-switchTab('ventas', 'nueva');
+  setTimeout(() => calcTotalVenta(), 100);
+  qs('#v-form-title').textContent = 'Editar Venta';
+  qs('#v-btn-txt').textContent    = 'Actualizar Venta';
+  switchTab('ventas', 'nueva');
 }
 
 async function eliminarVentaUI(id) {
