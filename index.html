@@ -1172,37 +1172,38 @@ async function generarNroFactura() {
 }
 
 async function guardarVentaUI() {
-  const clienteId = ge('v-cliente').value;
-  const fecha     = ge('v-fecha').value;
-  const importe   = parseFloat(ge('v-importe').value);
+  const qs = s => document.querySelector(s);
+  const clienteId = qs('#v-cliente').value;
+  const fecha     = qs('#v-fecha').value;
+  const importe   = parseFloat(qs('#v-importe').value);
   if (!clienteId || !fecha || !importe) { toast('Completa los campos obligatorios', 'error'); return; }
 
-  ge('v-btn-save').disabled = true;
-  ge('v-btn-txt').textContent = 'Guardando...';
+  qs('#v-btn-save').disabled = true;
+  qs('#v-btn-txt').textContent = 'Guardando...';
 
-  const ivaPct = parseFloat(document.querySelector('#v-iva')?.value) || 0;
+  const ivaPct   = parseFloat(qs('#v-iva').value) || 0;
   const ivaMonto = +(importe * ivaPct / 100).toFixed(2);
   const total    = +(importe + ivaMonto).toFixed(2);
 
   const payload = {
     cliente_id:   clienteId,
-    obra_id:      ge('v-obra').value      || null,
-    tipo:         ge('v-tipo').value,
-    nro_factura:  ge('v-factura').value   || null,
-    oc:           ge('v-oc').value        || null,
+    obra_id:      qs('#v-obra').value       || null,
+    tipo:         qs('#v-tipo').value,
+    nro_factura:  qs('#v-factura').value    || null,
+    oc:           qs('#v-oc').value         || null,
     fecha:        fecha,
     importe_neto: importe,
     iva_pct:      ivaPct,
     iva_monto:    ivaMonto,
     total:        total,
-    condicion:    ge('v-condicion').value,
-    banco:        ge('v-banco')?.value    || null,
-    descripcion:  ge('v-desc').value      || null,
-    url_adjunto:  ge('v-url-adj').value   || null
+    condicion:    qs('#v-condicion').value,
+    banco:        qs('#v-banco')?.value     || null,
+    descripcion:  qs('#v-desc').value       || null,
+    url_adjunto:  qs('#v-url-adj').value    || null
   };
 
+  const editId = qs('#v-id').value;
   let error, data;
-  const editId = ge('v-id').value;
   if (editId) {
     ({ error } = await sb.from('ventas').update(payload).eq('id', editId));
     data = { id: editId };
@@ -1211,20 +1212,19 @@ async function guardarVentaUI() {
   }
 
   if (error) {
-    toast('Error guardando venta: ' + error.message, 'error');
-    ge('v-btn-save').disabled = false;
-    ge('v-btn-txt').textContent = 'Guardar Venta';
+    toast('Error: ' + error.message, 'error');
+    qs('#v-btn-save').disabled = false;
+    qs('#v-btn-txt').textContent = 'Guardar Venta';
     return;
   }
 
-  // Subir adjunto si hay
   if (archivos['v'] && data?.id) await subirAdjunto('v', data.id, 'ventas');
 
   toast('Venta guardada');
   resetFormVenta();
   switchTab('ventas', 'lista');
-  ge('v-btn-save').disabled = false;
-  ge('v-btn-txt').textContent = 'Guardar Venta';
+  qs('#v-btn-save').disabled = false;
+  qs('#v-btn-txt').textContent = 'Guardar Venta';
 }
 
 function resetFormVenta() {
