@@ -288,7 +288,7 @@ tbody tr:hover{background:var(--bg3);}
         </div>
         <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px;">
           <div class="stat-card"><div class="stat-label">Sin IVA</div><div class="stat-value" id="v-siniva" style="font-size:20px;">$0</div></div>
-          <div class="stat-card"><div class="stat-label">IVA</div><div class="stat-value" id="v-iva" style="font-size:20px;">$0</div></div>
+          <div class="stat-card"><div class="stat-label">IVA</div><div class="stat-value" id="v-iva-total" style="font-size:20px;">$0</div></div>
           <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value" id="v-total" style="font-size:20px;color:var(--accent);">$0</div></div>
         </div>
         <div class="table-wrap">
@@ -1061,7 +1061,7 @@ async function cargarVentas() {
 function calcTotalesVentas() {
   const r = G.ventas.reduce((a, v) => ({ si: a.si + v.importe, iv: a.iv + v.ivaMonto, tot: a.tot + v.total }), { si: 0, iv: 0, tot: 0 });
   ge('v-siniva').textContent = fmt(r.si);
-  ge('v-iva').textContent    = fmt(r.iv);
+  document.querySelector('#v-iva-total').textContent = fmt(r.iv);
   ge('v-total').textContent  = fmt(r.tot);
 }
 
