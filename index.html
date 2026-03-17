@@ -1488,6 +1488,7 @@ async function guardarCompraUI() {
   if (!provId || !fecha || !importe) { toast('Completa los campos obligatorios', 'error'); return; }
 
   ge('cp-btn-save').disabled = true;
+  ge('cp-btn-txt') && (ge('cp-btn-txt').textContent = 'Guardando...');
 
   const ivaPct   = parseFloat(ge('cp-iva').value) || 0;
   const ivaMonto = +(importe * ivaPct / 100).toFixed(2);
@@ -1517,9 +1518,17 @@ async function guardarCompraUI() {
     ({ data, error } = await sb.from('compras').insert(payload).select().single());
   }
 
-  if (error) { toast('Error: ' + error.message, 'error'); ge('cp-btn-save').disabled = false; return; }
+  if (error) { 
+    toast('Error: ' + error.message, 'error'); 
+    ge('cp-btn-save').disabled = false; 
+    return; 
+  }
 
-  if (archivos['cp'] && data?.id) await subirAdjunto('cp', data.id, 'compras');
+  // Subir adjunto después de tener el ID
+  if (archivos['cp'] && data?.id) {
+    ge('cp-btn-save').textContent = 'Subiendo doc...';
+    await subirAdjunto('cp', data.id, 'compras');
+  }
 
   toast('Compra guardada');
   resetFormCompra();
