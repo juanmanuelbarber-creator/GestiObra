@@ -386,60 +386,56 @@ tbody tr:hover{background:var(--bg3);}
           <button class="tab-btn" onclick="switchTab('compras','nueva')">Nueva compra</button>
         </div>
       </div>
-      <div id="compras-lista">
-  <!-- FILTROS -->
-  <div class="filters" style="margin-bottom:16px;">
-    <select class="filter-select" id="cf-mes">
-      <option value="">Todos los meses</option>
-      <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
-      <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
-      <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
-      <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
-    </select>
-    <select class="filter-select" id="cf-anio">
-      <option value="">Todos los años</option>
-    </select>
-    <select class="filter-select" id="cf-cat">
-      <option value="">Todas las categorías</option>
-      <option>Materiales</option><option>Herramientas</option><option>Servicios</option><option>Equipos</option><option>Otros</option>
-    </select>
-    <select class="filter-select" id="cf-estado">
-      <option value="">Todos los estados</option>
-      <option value="pendiente">Pendiente</option>
-      <option value="parcial">Parcial</option>
-      <option value="pagado">Pagado</option>
-    </select>
-    <input class="filter-input" type="text" id="cf-busq" placeholder="Buscar proveedor, factura...">
-  </div>
-
-  <!-- TARJETAS TOTALES -->
-  <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
-    <div class="stat-card">
-      <div class="stat-label">Total sin IVA</div>
-      <div class="stat-value" id="cp-siniva" style="font-size:20px;">$0</div>
-    </div>
-    <div class="stat-card blue">
-      <div class="stat-label">IVA</div>
-      <div class="stat-value" id="cp-iva-total" style="font-size:20px;">$0</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Total con IVA</div>
-      <div class="stat-value" id="cp-total-cards" style="font-size:20px;color:var(--accent);">$0</div>
-    </div>
-    <div class="stat-card red">
-      <div class="stat-label">Saldo pendiente</div>
-      <div class="stat-value" id="cp-saldo-pend" style="font-size:20px;">$0</div>
-    </div>
-  </div>
-
-  <div class="table-wrap">
-          <table><thead><tr>
-            <th>Proveedor</th><th>Obra</th><th>Factura</th><th>Fecha</th>
-            <th>Categoria</th><th class="td-r">Total</th><th>Estado</th><th>Doc</th><th class="td-c">Acc.</th>
-          </tr></thead><tbody id="compras-tbody"></tbody></table>
-        </div>
-        <div class="pagination" id="compras-pag"></div>
+     <div id="compras-lista">
+      <div class="filters" style="margin-bottom:16px;">
+        <select class="filter-select" id="cf-mes">
+          <option value="">Todos los meses</option>
+          <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+          <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+          <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+          <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+        </select>
+        <select class="filter-select" id="cf-anio">
+          <option value="">Todos los años</option>
+        </select>
+        <select class="filter-select" id="cf-cat">
+          <option value="">Todas las categorías</option>
+          <option>Materiales</option><option>Herramientas</option><option>Servicios</option><option>Equipos</option><option>Otros</option>
+        </select>
+        <select class="filter-select" id="cf-estado">
+          <option value="">Todos los estados</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="parcial">Parcial</option>
+          <option value="pagado">Pagado</option>
+        </select>
+        <input class="filter-input" type="text" id="cf-busq" placeholder="Buscar proveedor, factura...">
       </div>
+      <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
+        <div class="stat-card">
+          <div class="stat-label">Total sin IVA</div>
+          <div class="stat-value" id="cp-siniva" style="font-size:20px;">$0</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-label">IVA</div>
+          <div class="stat-value" id="cp-iva-total" style="font-size:20px;">$0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total con IVA</div>
+          <div class="stat-value" id="cp-total-cards" style="font-size:20px;color:var(--accent);">$0</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-label">Saldo pendiente</div>
+          <div class="stat-value" id="cp-saldo-pend" style="font-size:20px;">$0</div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr>
+          <th>Proveedor</th><th>Obra</th><th>Factura</th><th>Fecha</th>
+          <th>Categoria</th><th class="td-r">Total</th><th>Estado</th><th>Doc</th><th class="td-c">Acc.</th>
+        </tr></thead><tbody id="compras-tbody"></tbody></table>
+      </div>
+      <div class="pagination" id="compras-pag"></div>
+    </div>
       <div id="compras-nueva" style="display:none;">
         <div class="card" style="max-width:820px;">
           <div class="card-title"><i class="fas fa-plus-circle" style="color:var(--accent);"></i>Nueva Compra</div>
@@ -1961,14 +1957,28 @@ async function confirmarProveedor() {
   if (!ge('mpv-nombre').value) { toast('El nombre es obligatorio', 'error'); return; }
   const payload = { nombre: ge('mpv-nombre').value, cuit: ge('mpv-cuit').value || null, rubro: ge('mpv-rubro').value || null, email: ge('mpv-email').value || null, telefono: ge('mpv-tel').value || null, banco: ge('mpv-banco').value || null, cbu: ge('mpv-cbu').value || null, activo: true };
   const id = ge('mpv-id').value;
-  let error;
-  if (id) ({ error } = await sb.from('proveedores').update(payload).eq('id', id));
-  else    ({ error } = await sb.from('proveedores').insert(payload));
+  let error, data;
+  if (id) {
+    ({ error } = await sb.from('proveedores').update(payload).eq('id', id));
+  } else {
+    ({ data, error } = await sb.from('proveedores').insert(payload).select().single());
+  }
   if (error) { toast('Error: ' + error.message, 'error'); return; }
   toast('Proveedor guardado');
   cerrarModal('modal-prov');
-  cargarProveedores();
-  refrescarProveedores();
+
+  // Refrescar y seleccionar el nuevo proveedor si estamos en compras
+  await sb.from('proveedores').select('id,nombre,cuit').eq('activo', true).order('nombre').then(({ data: lista }) => {
+    G.proveedores = lista || [];
+    const sp = ge('cp-prov');
+    if (sp) {
+      poblarSelect('cp-prov', G.proveedores, 'nombre', 'id', 'Seleccione proveedor');
+      if (data?.id) sp.value = data.id; // selecciona el recién creado
+    }
+  });
+
+  // Si estamos en la página de proveedores, refrescar la tabla
+  if (ge('page-proveedores').classList.contains('active')) cargarProveedores();
 }
 
 // ============================================================
