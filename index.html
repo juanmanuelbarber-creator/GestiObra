@@ -1185,6 +1185,8 @@ async function guardarVentaUI() {
   const ivaMonto = +(importe * ivaPct / 100).toFixed(2);
   const total    = +(importe + ivaMonto).toFixed(2);
 
+  // 1. Insertar sin adjunto para obtener el ID
+  const editId = qs('#v-id').value;
   const payload = {
     cliente_id:   clienteId,
     obra_id:      qs('#v-obra').value       || null,
@@ -1202,7 +1204,6 @@ async function guardarVentaUI() {
     url_adjunto:  qs('#v-url-adj').value    || null
   };
 
-  const editId = qs('#v-id').value;
   let error, data;
   if (editId) {
     ({ error } = await sb.from('ventas').update(payload).eq('id', editId));
@@ -1218,7 +1219,11 @@ async function guardarVentaUI() {
     return;
   }
 
-  if (archivos['v'] && data?.id) await subirAdjunto('v', data.id, 'ventas');
+  // 2. Subir archivo y actualizar url_adjunto en la fila recién creada
+  if (archivos['v'] && data?.id) {
+    qs('#v-btn-txt').textContent = 'Subiendo doc...';
+    await subirAdjunto('v', data.id, 'ventas');
+  }
 
   toast('Venta guardada');
   resetFormVenta();
