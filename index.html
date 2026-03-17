@@ -1946,9 +1946,15 @@ async function subirAdjunto(pfx, registroId, tabla) {
   if (!file) return;
   const ext  = file.name.split('.').pop();
   const path = `${tabla}/${registroId}_${Date.now()}.${ext}`;
+  
   const { error: uploadError } = await sb.storage.from('documentos').upload(path, file, { upsert: true, contentType: file.type });
+  console.log('Upload error:', uploadError);  // ← agregá esta línea
+  
   if (uploadError) { toast('Error subiendo archivo: ' + uploadError.message, 'error'); return; }
+  
   const { data: { publicUrl } } = sb.storage.from('documentos').getPublicUrl(path);
+  console.log('URL generada:', publicUrl);  // ← y esta
+  
   await sb.from(tabla).update({ url_adjunto: publicUrl }).eq('id', registroId);
   ge(pfx + '-url-adj').value = publicUrl;
   archivos[pfx] = null;
