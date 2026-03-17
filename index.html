@@ -387,8 +387,52 @@ tbody tr:hover{background:var(--bg3);}
         </div>
       </div>
       <div id="compras-lista">
-        <div class="filters"><input class="filter-input" type="text" id="cf-busq" placeholder="Buscar proveedor..."></div>
-        <div class="table-wrap">
+  <!-- FILTROS -->
+  <div class="filters" style="margin-bottom:16px;">
+    <select class="filter-select" id="cf-mes">
+      <option value="">Todos los meses</option>
+      <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+      <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+      <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+      <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+    </select>
+    <select class="filter-select" id="cf-anio">
+      <option value="">Todos los años</option>
+    </select>
+    <select class="filter-select" id="cf-cat">
+      <option value="">Todas las categorías</option>
+      <option>Materiales</option><option>Herramientas</option><option>Servicios</option><option>Equipos</option><option>Otros</option>
+    </select>
+    <select class="filter-select" id="cf-estado">
+      <option value="">Todos los estados</option>
+      <option value="pendiente">Pendiente</option>
+      <option value="parcial">Parcial</option>
+      <option value="pagado">Pagado</option>
+    </select>
+    <input class="filter-input" type="text" id="cf-busq" placeholder="Buscar proveedor, factura...">
+  </div>
+
+  <!-- TARJETAS TOTALES -->
+  <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
+    <div class="stat-card">
+      <div class="stat-label">Total sin IVA</div>
+      <div class="stat-value" id="cp-siniva" style="font-size:20px;">$0</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-label">IVA</div>
+      <div class="stat-value" id="cp-iva-total" style="font-size:20px;">$0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total con IVA</div>
+      <div class="stat-value" id="cp-total-cards" style="font-size:20px;color:var(--accent);">$0</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Saldo pendiente</div>
+      <div class="stat-value" id="cp-saldo-pend" style="font-size:20px;">$0</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
           <table><thead><tr>
             <th>Proveedor</th><th>Obra</th><th>Factura</th><th>Fecha</th>
             <th>Categoria</th><th class="td-r">Total</th><th>Estado</th><th>Doc</th><th class="td-c">Acc.</th>
@@ -1399,15 +1443,26 @@ async function confirmarCobro() {
 // COMPRAS
 // ============================================================
 async function cargarCompras() {
-  const busq = ge('cf-busq').value.trim();
   let q = sb.from('compras')
     .select('id,proveedor_id,proveedores(nombre),obra_id,obras(nombre),nro_factura,nro_remito,fecha,importe_neto,iva_pct,iva_monto,total,categoria,descripcion,url_adjunto')
     .order('fecha', { ascending: false });
 
+  const mes    = ge('cf-mes')?.value;
+  const anio   = ge('cf-anio')?.value;
+  const cat    = ge('cf-cat')?.value;
+  const estado = ge('cf-estado')?.value;
+  const busq   = ge('cf-busq').value.trim();
+
+  if (anio) {
+    const d1 = mes ? `${anio}-${String(mes).padStart(2,'0')}-01` : `${anio}-01-01`;
+    const d2 = mes ? `${anio}-${String(mes).padStart(2,'0')}-31` : `${anio}-12-31`;
+    q = q.gte('fecha', d1).lte('fecha', d2);
+  }
+  if (cat) q = q.eq('categoria', cat);
+
   const { data, error } = await q;
   if (error) { toast('Error compras', 'error'); return; }
 
-  // Calcular pagado por compra
   const { data: pagosData } = await sb.from('pagos').select('compra_id,importe');
   const mapaP = {};
   (pagosData || []).forEach(p => { mapaP[p.compra_id] = (mapaP[p.compra_id] || 0) + Number(p.importe); });
@@ -1436,9 +1491,40 @@ async function cargarCompras() {
     compras = compras.filter(c => c.proveedor.toLowerCase().includes(b) || c.nro_factura.toLowerCase().includes(b));
   }
 
+  if (estado) {
+    compras = compras.filter(c => {
+      const est = c.pagado >= c.total ? 'pagado' : c.pagado > 0 ? 'parcial' : 'pendiente';
+      return est === estado;
+    });
+  }
+
+  // Poblar años
+  const { data: todasCompras } = await sb.from('compras').select('fecha');
+  const anios = [...new Set((todasCompras || []).map(c => c.fecha?.slice(0,4)))].filter(Boolean).sort().reverse();
+  const saAnio = ge('cf-anio');
+  const valAnio = saAnio.value;
+  saAnio.innerHTML = '<option value="">Todos los años</option>';
+  anios.forEach(a => saAnio.add(new Option(a, a)));
+  saAnio.value = valAnio;
+
   G.compras = compras;
   pags.compras = 1;
+  calcTotalesCompras();
   renderCompras();
+}
+
+  function calcTotalesCompras() {
+  const r = G.compras.reduce((a, c) => ({
+    si:   a.si   + c.importe,
+    iv:   a.iv   + c.ivaMonto,
+    tot:  a.tot  + c.total,
+    pend: a.pend + Math.max(0, c.pendiente)
+  }), { si: 0, iv: 0, tot: 0, pend: 0 });
+
+  ge('cp-siniva')     && (ge('cp-siniva').textContent     = fmt(r.si));
+  ge('cp-iva-total')  && (ge('cp-iva-total').textContent  = fmt(r.iv));
+  ge('cp-total-cards') && (ge('cp-total-cards').textContent = fmt(r.tot));
+  ge('cp-saldo-pend') && (ge('cp-saldo-pend').textContent = fmt(r.pend));
 }
 
 function renderCompras() {
@@ -2008,7 +2094,12 @@ document.querySelector('#v-iva').addEventListener('input',  calcTotalVenta);
 
   // Busqueda con debounce
   ge('vf-busq').addEventListener('input', debounce(cargarVentas, 400));
-  ge('cf-busq').addEventListener('input', debounce(cargarCompras, 400));
+  // Filtros compras
+ge('cf-mes').addEventListener('change',   cargarCompras);
+ge('cf-anio').addEventListener('change',  cargarCompras);
+ge('cf-cat').addEventListener('change',   cargarCompras);
+ge('cf-estado').addEventListener('change', cargarCompras);
+ge('cf-busq').addEventListener('input',   debounce(cargarCompras, 400));
   ge('cob-busq').addEventListener('input', renderCobranzas);
 
   // File uploads
