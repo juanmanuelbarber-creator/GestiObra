@@ -321,11 +321,12 @@ tbody tr:hover{background:var(--bg3);}
             <div class="form-group"><label>Punto de venta</label><input type="text" id="v-pv" value="0001" maxlength="4"></div>
             <div class="form-group"><label>N. Factura</label><input type="text" id="v-factura" id="v-factura" placeholder="Ej: A-0001-000001"></div>
             <div class="form-group"><label>Fecha *</label><input type="date" id="v-fecha" required></div>
-            <div class="form-group"><label>Importe sin IVA *</label><input type="number" step="0.01" id="v-importe" oninput="calcTotalVenta()" required></div>
+            <div class="form-group"><label>Importe sin IVA *</label><input type="number" step="0.01" id="cp-importe" required></div>
             <div class="form-group">
               <label>IVA %</label>
-              <select id="v-iva" onchange="calcTotalVenta()"><option value="21">21%</option><option value="10.5">10.5%</option><option value="0">0%</option></select>
-            </div>
+              <select id="cp-iva"><option value="21">21%</option><option value="10.5">10.5%</option><option value="0">0%</option></select>
+              </div>
+              <div class="form-group"><label>Otros Tributos</label><input type="number" step="0.01" id="cp-otros" placeholder="0,00"></div>
             <div class="form-group">
               <label>Condicion *</label>
               <select id="v-condicion"><option>Contado</option><option>Transferencia</option><option>Cheque</option><option>e-Cheq</option></select>
@@ -1566,9 +1567,11 @@ function renderCompras() {
 }
 
 function calcTotalCompra() {
-  const imp = parseFloat(ge('cp-importe').value) || 0;
-  const iva = parseFloat(ge('cp-iva').value)     || 0;
-  ge('cp-total-disp').textContent = fmt(imp + imp * iva / 100);
+  const imp    = parseFloat(ge('cp-importe').value) || 0;
+  const iva    = parseFloat(ge('cp-iva').value)     || 0;
+  const otros  = parseFloat(ge('cp-otros').value)   || 0;
+  const total  = imp + (imp * iva / 100) + otros;
+  ge('cp-total-disp').textContent = fmt(total);
 }
 
 async function guardarCompraUI() {
@@ -1582,6 +1585,7 @@ async function guardarCompraUI() {
 
   const ivaPct   = parseFloat(ge('cp-iva').value) || 0;
   const ivaMonto = +(importe * ivaPct / 100).toFixed(2);
+  const otrosTrib   = +(parseFloat(ge('cp-otros').value) || 0).toFixed(2);
   const total    = +(importe + ivaMonto).toFixed(2);
 
   const payload = {
@@ -1593,6 +1597,7 @@ async function guardarCompraUI() {
     importe_neto: importe,
     iva_pct:      ivaPct,
     iva_monto:    ivaMonto,
+    otros_tributos:  otrosTrib,
     total:        total,
     categoria:    ge('cp-cat').value     || null,
     descripcion:  ge('cp-desc').value    || null,
@@ -1635,6 +1640,7 @@ function resetFormCompra() {
   archivos['cp'] = null;
   ge('cp-file-preview').style.display = 'none';
   ge('cp-url-adj').value = '';
+  ge('cp-otros').value = '';
 }
 
 async function eliminarCompraUI(id) {
@@ -2100,6 +2106,7 @@ document.querySelector('#v-iva').addEventListener('input',  calcTotalVenta);
   // Compras form events
   ge('cp-importe').addEventListener('input',  calcTotalCompra);
   ge('cp-iva').addEventListener('change',     calcTotalCompra);
+  ge('cp-otros').addEventListener('input', calcTotalCompra);
   ge('cp-btn-save').addEventListener('click', guardarCompraUI);
 
   // Busqueda con debounce
