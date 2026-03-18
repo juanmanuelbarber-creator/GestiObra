@@ -2109,7 +2109,7 @@ document.querySelector('#v-iva').addEventListener('input',  calcTotalVenta);
   // Compras form events
   ge('cp-importe').addEventListener('input',  calcTotalCompra);
   ge('cp-iva').addEventListener('change',     calcTotalCompra);
-  ge('cp-otros').addEventListener('input', calcTotalCompra);
+  ge('cp-otros')?.addEventListener('input', calcTotalCompra);
   ge('cp-btn-save').addEventListener('click', guardarCompraUI);
 
   // Busqueda con debounce
