@@ -2234,7 +2234,7 @@ async function guardarConfigUI() {
     logo_url:          ge('cfg-logo').value
   };
   for (const [clave, valor] of Object.entries(items)) {
-    await sb.from('config').update({ valor }).eq('clave', clave);
+    await sb.from('config').upsert({ clave, valor }, { onConflict: 'clave' });
   }
   toast('Configuracion guardada');
   if (items.empresa_nombre) ge('sb-empresa').textContent = items.empresa_nombre;
