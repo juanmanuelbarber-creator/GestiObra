@@ -360,22 +360,46 @@ tbody tr:hover{background:var(--bg3);}
     <!-- COBRANZAS -->
     <div class="page" id="page-cobranzas">
       <div class="section-header">
-        <div class="section-title">Estado de Cobranzas</div>
-        <button class="btn btn-secondary btn-sm" onclick="toggleVerTodasCob()"><i class="fas fa-eye"></i> <span id="cob-toggle-txt">Ver todas</span></button>
+        <div class="tabs">
+          <button class="tab-btn active" id="cob-tab-estado" onclick="switchTab('cobranzas','estado')">Estado de Cobranzas</button>
+          <button class="tab-btn" id="cob-tab-recibos" onclick="switchTab('cobranzas','recibos')">Recibos</button>
+        </div>
       </div>
-      <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:18px;">
-        <div class="stat-card green"><div class="stat-label">Total cobrado</div><div class="stat-value" id="cob-cobrado">$0</div></div>
-        <div class="stat-card red">  <div class="stat-label">Total pendiente</div><div class="stat-value" id="cob-pendiente">$0</div></div>
+
+      <!-- TAB: Estado -->
+      <div id="cob-panel-estado">
+        <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:18px;">
+          <div class="stat-card green"><div class="stat-label">Total cobrado</div><div class="stat-value" id="cob-cobrado">$0</div></div>
+          <div class="stat-card red">  <div class="stat-label">Total pendiente</div><div class="stat-value" id="cob-pendiente">$0</div></div>
+        </div>
+        <div class="filters" style="display:flex;gap:8px;align-items:center;">
+          <input class="filter-input" type="text" id="cob-busq" placeholder="Buscar cliente...">
+          <button class="btn btn-secondary btn-sm" onclick="toggleVerTodasCob()"><i class="fas fa-eye"></i> <span id="cob-toggle-txt">Ver todas</span></button>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr>
+            <th>Cliente</th><th>Factura</th><th>Obra</th>
+            <th class="td-r">Total</th><th class="td-r">Cobrado</th><th class="td-r">Pendiente</th>
+            <th class="td-c">Estado</th><th class="td-c">Acc.</th>
+          </tr></thead><tbody id="cob-tbody"></tbody></table>
+        </div>
+        <div class="pagination" id="cob-pag"></div>
       </div>
-      <div class="filters"><input class="filter-input" type="text" id="cob-busq" placeholder="Buscar cliente..."></div>
-      <div class="table-wrap">
-        <table><thead><tr>
-          <th>Cliente</th><th>Factura</th><th>Obra</th>
-          <th class="td-r">Total</th><th class="td-r">Cobrado</th><th class="td-r">Pendiente</th>
-          <th class="td-c">Estado</th><th class="td-c">Acc.</th>
-        </tr></thead><tbody id="cob-tbody"></tbody></table>
+
+      <!-- TAB: Recibos -->
+      <div id="cob-panel-recibos" style="display:none;">
+        <div class="filters" style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
+          <input class="filter-input" type="text" id="rec-busq" placeholder="Buscar cliente o N° recibo..." oninput="renderRecibos()">
+        </div>
+        <div id="rec-sin-tabla" class="empty-state" style="display:none;"><i class="fas fa-receipt"></i><p>Para ver el historial de recibos, crea la tabla <code>recibos</code> en Supabase (ver consola para el SQL).</p></div>
+        <div class="table-wrap" id="rec-tabla-wrap">
+          <table><thead><tr>
+            <th>N° Recibo</th><th>Fecha</th><th>Cliente</th><th>Factura</th><th>Obra</th>
+            <th class="td-r">Importe</th><th>Condicion</th><th class="td-c">Acc.</th>
+          </tr></thead><tbody id="rec-tbody"></tbody></table>
+        </div>
+        <div class="pagination" id="rec-pag"></div>
       </div>
-      <div class="pagination" id="cob-pag"></div>
     </div>
 
     <!-- COMPRAS -->
@@ -720,11 +744,12 @@ const G = {
   empleados:    [],
   materiales:   [],
   config:       {},
+  recibos:      [],
   charts:       {}
 };
 
 const PER_PAG = 15;
-const pags    = { ventas: 1, cob: 1, compras: 1 };
+const pags    = { ventas: 1, cob: 1, compras: 1, rec: 1 };
 let verTodasCob = false;
 let cobroCtx = {};
 const archivos  = { v: null, cp: null };
@@ -907,6 +932,12 @@ function switchTab(mod, tab) {
     btns[0].classList.toggle('active', tab === 'lista');
     btns[1].classList.toggle('active', tab === 'nueva');
     if (tab === 'lista') cargarCompras();
+  } else if (mod === 'cobranzas') {
+    ge('cob-panel-estado').style.display  = tab === 'estado'  ? 'block' : 'none';
+    ge('cob-panel-recibos').style.display = tab === 'recibos' ? 'block' : 'none';
+    ge('cob-tab-estado').classList.toggle('active',  tab === 'estado');
+    ge('cob-tab-recibos').classList.toggle('active', tab === 'recibos');
+    if (tab === 'recibos') cargarRecibos();
   } else if (mod === 'cl') {
     ge('cl-clientes').style.display = tab === 'clientes' ? 'block' : 'none';
     ge('cl-obras').style.display    = tab === 'obras'    ? 'block' : 'none';
@@ -1415,6 +1446,64 @@ function renderCobranzas() {
   renderPag('cob-pag', lista.length, pags.cob, p => { pags.cob = p; renderCobranzas(); });
 }
 
+async function cargarRecibos() {
+  const { data, error } = await sb.from('recibos').select('*').order('created_at', { ascending: false });
+  if (error) {
+    if (error.code === '42P01') { // tabla no existe
+      ge('rec-sin-tabla').style.display = 'flex';
+      ge('rec-tabla-wrap').style.display = 'none';
+      console.info('Crea la tabla recibos en Supabase:\n\nCREATE TABLE recibos (\n  id bigint generated always as identity primary key,\n  venta_id text,\n  cliente text not null,\n  nro_factura text,\n  obra text,\n  importe numeric not null,\n  condicion text,\n  fecha date not null,\n  nro_recibo text not null,\n  created_at timestamptz default now()\n);\nALTER TABLE recibos ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "recibos_all" ON recibos FOR ALL USING (true);');
+    } else {
+      toast('Error cargando recibos: ' + error.message, 'error');
+    }
+    return;
+  }
+  ge('rec-sin-tabla').style.display = 'none';
+  ge('rec-tabla-wrap').style.display = 'block';
+  G.recibos = data || [];
+  pags.rec = 1;
+  renderRecibos();
+}
+
+function renderRecibos() {
+  const busq = (ge('rec-busq')?.value || '').toLowerCase();
+  let lista = G.recibos || [];
+  if (busq) lista = lista.filter(r =>
+    (r.cliente || '').toLowerCase().includes(busq) ||
+    (r.nro_recibo || '').includes(busq) ||
+    (r.nro_factura || '').toLowerCase().includes(busq)
+  );
+  const ini = ((pags.rec || 1) - 1) * PER_PAG;
+  const pag = lista.slice(ini, ini + PER_PAG);
+  const tb  = ge('rec-tbody');
+  tb.innerHTML = '';
+  if (!pag.length) {
+    tb.innerHTML = '<tr><td colspan="8"><div class="empty-state"><i class="fas fa-receipt"></i>Sin recibos</div></td></tr>';
+    renderPag('rec-pag', 0, 1, () => {});
+    return;
+  }
+  pag.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.appendChild(mkTd(`<strong>${r.nro_recibo}</strong>`));
+    tr.appendChild(mkTd(r.fecha ? new Date(r.fecha + 'T00:00:00').toLocaleDateString('es-AR') : '-'));
+    tr.appendChild(mkTd(`<strong>${r.cliente}</strong>`));
+    tr.appendChild(mkTd(`<span style="color:var(--accent)">${r.nro_factura || '-'}</span>`));
+    tr.appendChild(mkTd(`<span style="color:var(--muted)">${r.obra || '-'}</span>`));
+    tr.appendChild(mkTd(fmt(r.importe), 'td-r'));
+    tr.appendChild(mkTd(r.condicion || '-'));
+    const tdAcc = document.createElement('td');
+    tdAcc.className = 'td-c';
+    tdAcc.appendChild(mkBtn('btn-primary', 'download', () => generarReciboPDF({
+      vid: r.venta_id, cliente: r.cliente, factura: r.nro_factura, pendiente: r.importe,
+      obra: r.obra, importe: r.importe, fecha: new Date(r.fecha + 'T00:00:00'),
+      nroRecibo: r.nro_recibo, condicion: r.condicion
+    })));
+    tr.appendChild(tdAcc);
+    tb.appendChild(tr);
+  });
+  renderPag('rec-pag', lista.length, pags.rec || 1, p => { pags.rec = p; renderRecibos(); });
+}
+
 function toggleVerTodasCob() {
   verTodasCob = !verTodasCob;
   ge('cob-toggle-txt').textContent = verTodasCob ? 'Solo pendientes' : 'Ver todas';
@@ -1434,15 +1523,16 @@ async function confirmarCobro() {
   const imp  = parseFloat(ge('mc-importe').value);
   if (!imp || imp <= 0) { toast('Importe invalido', 'error'); return; }
   const cond = ge('mc-cond').value;
-  const { data: cobData, error } = await sb.from('cobros').insert({
+  const { error } = await sb.from('cobros').insert({
     venta_id: ge('mc-vid').value,
     fecha:    new Date().toISOString().slice(0, 10),
     importe:  imp
-  }).select('id').single();
+  });
   if (error) { toast('Error: ' + error.message, 'error'); return; }
+  const nroRecibo = Date.now().toString().slice(-8);
   toast('Cobro registrado — generando recibo...');
   cerrarModal('modal-cobro');
-  generarReciboPDF({ ...cobroCtx, importe: imp, fecha: new Date(), nroRecibo: cobData?.id, condicion: cond });
+  generarReciboPDF({ ...cobroCtx, importe: imp, fecha: new Date(), nroRecibo, condicion: cond });
   cargarCobranzas();
   cargarDashboard();
 }
@@ -1467,6 +1557,18 @@ function cargarLogoParaPDF(url) {
 }
 
 async function generarReciboPDF({ vid, cliente, factura, pendiente, obra, importe, fecha, nroRecibo, condicion }) {
+  // Persistir en tabla recibos (silencioso si la tabla no existe aun)
+  await sb.from('recibos').insert({
+    venta_id:    vid || null,
+    cliente:     cliente,
+    nro_factura: factura || null,
+    obra:        obra    || null,
+    importe:     importe,
+    condicion:   condicion || null,
+    fecha:       (fecha instanceof Date ? fecha : new Date(fecha)).toISOString().slice(0, 10),
+    nro_recibo:  String(nroRecibo)
+  }).then(({ error }) => { if (error && error.code !== '42P01') console.warn('recibos insert:', error.message); });
+
   const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
   const lm  = t => t ? String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9 \-\.\,\/\$\#\:]/g, '') : '';
   const W = 210, M = 18;
@@ -2234,7 +2336,10 @@ async function guardarConfigUI() {
     logo_url:          ge('cfg-logo').value
   };
   for (const [clave, valor] of Object.entries(items)) {
-    await sb.from('config').upsert({ clave, valor }, { onConflict: 'clave' });
+    const { data: upd } = await sb.from('config').update({ valor }).eq('clave', clave).select('clave');
+    if (!upd || upd.length === 0) {
+      await sb.from('config').insert({ clave, valor });
+    }
   }
   toast('Configuracion guardada');
   if (items.empresa_nombre) ge('sb-empresa').textContent = items.empresa_nombre;
