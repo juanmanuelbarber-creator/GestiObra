@@ -601,10 +601,13 @@ tbody tr:hover{background:var(--bg3);}
     <div class="modal-header"><div class="modal-title">Registrar Cobro</div><button class="modal-close" onclick="cerrarModal('modal-cobro')">&times;</button></div>
     <input type="hidden" id="mc-vid">
     <div id="mc-info" style="margin-bottom:14px;font-size:13px;color:var(--muted);"></div>
-    <div class="form-group"><label>Importe a cobrar *</label><input type="number" step="0.01" id="mc-importe"></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Importe a cobrar *</label><input type="number" step="0.01" id="mc-importe"></div>
+      <div class="form-group"><label>Condicion de pago</label><select id="mc-cond"><option>Transferencia</option><option>Cheque</option><option>e-Cheq</option><option>Contado</option></select></div>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="cerrarModal('modal-cobro')">Cancelar</button>
-      <button class="btn btn-success" onclick="confirmarCobro()"><i class="fas fa-check"></i> Confirmar</button>
+      <button class="btn btn-success" onclick="confirmarCobro()"><i class="fas fa-check"></i> Confirmar y generar recibo</button>
     </div>
   </div>
 </div>
@@ -723,6 +726,7 @@ const G = {
 const PER_PAG = 15;
 const pags    = { ventas: 1, cob: 1, compras: 1 };
 let verTodasCob = false;
+let cobroCtx = {};
 const archivos  = { v: null, cp: null };
 
 // ============================================================
@@ -1404,7 +1408,7 @@ function renderCobranzas() {
     tr.appendChild(mkTd(`<span class="badge ${badge(v.estado)}">${v.estado}</span>`, 'td-c'));
     const tdAcc = document.createElement('td');
     tdAcc.className = 'td-c';
-    if (v.pendiente > 0.01) tdAcc.appendChild(mkBtn('btn-success', 'dollar-sign', () => abrirCobro(v.id, v.cliente, v.tipo + v.factura, v.pendiente)));
+    if (v.pendiente > 0.01) tdAcc.appendChild(mkBtn('btn-success', 'dollar-sign', () => abrirCobro(v.id, v.cliente, v.tipo + v.factura, v.pendiente, v.obra)));
     tr.appendChild(tdAcc);
     tb.appendChild(tr);
   });
@@ -1417,26 +1421,167 @@ function toggleVerTodasCob() {
   renderCobranzas();
 }
 
-function abrirCobro(vid, cliente, factura, pendiente) {
+function abrirCobro(vid, cliente, factura, pendiente, obra) {
+  cobroCtx = { vid, cliente, factura, pendiente, obra: obra || '' };
   ge('mc-vid').value     = vid;
   ge('mc-importe').value = pendiente.toFixed(2);
+  ge('mc-cond').value    = 'Transferencia';
   ge('mc-info').textContent = `${cliente} — ${factura} — Pendiente: ${fmt(pendiente)}`;
   abrirModal('modal-cobro');
 }
 
 async function confirmarCobro() {
-  const imp = parseFloat(ge('mc-importe').value);
+  const imp  = parseFloat(ge('mc-importe').value);
   if (!imp || imp <= 0) { toast('Importe invalido', 'error'); return; }
-  const { error } = await sb.from('cobros').insert({
+  const cond = ge('mc-cond').value;
+  const { data: cobData, error } = await sb.from('cobros').insert({
     venta_id: ge('mc-vid').value,
     fecha:    new Date().toISOString().slice(0, 10),
     importe:  imp
-  });
+  }).select('id').single();
   if (error) { toast('Error: ' + error.message, 'error'); return; }
-  toast('Cobro registrado');
+  toast('Cobro registrado — generando recibo...');
   cerrarModal('modal-cobro');
+  generarReciboPDF({ ...cobroCtx, importe: imp, fecha: new Date(), nroRecibo: cobData?.id, condicion: cond });
   cargarCobranzas();
   cargarDashboard();
+}
+
+function generarReciboPDF({ vid, cliente, factura, pendiente, obra, importe, fecha, nroRecibo, condicion }) {
+  const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
+  const lm  = t => t ? String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9 \-\.\,\/\$\#\:]/g, '') : '';
+  const W = 210, M = 15;
+  const azul = [30, 58, 138];
+  const gris = [120, 120, 120];
+
+  const empresa  = lm(G.config.empresa_nombre    || 'Empresa');
+  const cuitEmp  = lm(G.config.empresa_cuit       || '');
+  const dirEmp   = lm(G.config.empresa_direccion  || '');
+
+  // Buscar CUIT del cliente en maestros
+  const clienteData = G.clientes.find(c => c.nombre === cliente) || {};
+  const cuitCli = lm(clienteData.cuit || '');
+
+  const nroStr = nroRecibo ? String(nroRecibo).padStart(8, '0') : String(Date.now()).slice(-8);
+
+  // --- ENCABEZADO ---
+  doc.setFillColor(...azul);
+  doc.rect(0, 0, W, 35, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(26);
+  doc.setFont('helvetica', 'bold');
+  doc.text('RECIBO', M, 15);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(empresa, M, 22);
+  if (cuitEmp)  doc.text('CUIT: ' + cuitEmp, M, 28);
+  if (dirEmp)   doc.text(dirEmp, M, 34);
+
+  // Caja numero de recibo (derecha)
+  doc.setFontSize(8);
+  doc.text('N\u00b0 RECIBO', W - M, 13, { align: 'right' });
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(nroStr, W - M, 22, { align: 'right' });
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(fecha.toLocaleDateString('es-AR'), W - M, 30, { align: 'right' });
+
+  let y = 48;
+
+  // --- DATOS DEL CLIENTE ---
+  doc.setTextColor(...azul);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DATOS DEL CLIENTE', M, y);
+  y += 1;
+  doc.setDrawColor(...azul);
+  doc.setLineWidth(0.3);
+  doc.line(M, y, W - M, y);
+  y += 6;
+
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text('Razon social: ' + lm(cliente), M, y); y += 6;
+  if (cuitCli) { doc.text('CUIT: ' + cuitCli, M, y); y += 6; }
+  y += 4;
+
+  // --- DETALLE DEL COBRO ---
+  doc.setTextColor(...azul);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DETALLE DEL COBRO', M, y);
+  y += 1;
+  doc.line(M, y, W - M, y);
+  y += 6;
+
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(10);
+  const col2 = M + 42;
+
+  doc.setFont('helvetica', 'normal'); doc.text('Comprobante:', M, y);
+  doc.setFont('helvetica', 'bold');   doc.text(lm(factura), col2, y); y += 6;
+
+  if (obra) {
+    doc.setFont('helvetica', 'normal'); doc.text('Obra:', M, y);
+    doc.setFont('helvetica', 'bold');   doc.text(lm(obra), col2, y); y += 6;
+  }
+
+  doc.setFont('helvetica', 'normal'); doc.text('Condicion:', M, y);
+  doc.setFont('helvetica', 'bold');   doc.text(lm(condicion), col2, y); y += 6;
+
+  doc.setFont('helvetica', 'normal'); doc.text('Fecha de cobro:', M, y);
+  doc.setFont('helvetica', 'bold');   doc.text(fecha.toLocaleDateString('es-AR'), col2, y); y += 10;
+
+  // --- CAJA IMPORTE ---
+  doc.setFillColor(241, 245, 249);
+  doc.roundedRect(M, y, W - M * 2, 24, 3, 3, 'F');
+  doc.setTextColor(...gris);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text('IMPORTE COBRADO', W / 2, y + 8, { align: 'center' });
+  doc.setTextColor(...azul);
+  doc.setFontSize(22);
+  doc.setFont('helvetica', 'bold');
+  doc.text(fmt(importe), W / 2, y + 18, { align: 'center' });
+  y += 32;
+
+  // --- CONCEPTO ---
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  const tipoPago = importe >= pendiente - 0.01 ? 'total' : 'parcial';
+  const concepto = 'Recibo en concepto de pago ' + tipoPago + ' de ' + lm(factura) + (obra ? ' - Obra: ' + lm(obra) : '');
+  doc.text(concepto, M, y, { maxWidth: W - M * 2 }); y += 20;
+
+  // --- FIRMAS ---
+  doc.setDrawColor(180, 180, 180);
+  doc.setLineWidth(0.3);
+  const sigW = 65, sigY = y + 18;
+
+  doc.line(M, sigY, M + sigW, sigY);
+  doc.setTextColor(...gris);
+  doc.setFontSize(8);
+  doc.text('Firma y Aclaracion', M + sigW / 2, sigY + 5, { align: 'center' });
+  doc.text('Emisor', M + sigW / 2, sigY + 10, { align: 'center' });
+
+  const rx = W - M - sigW;
+  doc.line(rx, sigY, rx + sigW, sigY);
+  doc.text('Firma y Aclaracion', rx + sigW / 2, sigY + 5, { align: 'center' });
+  doc.text('Receptor', rx + sigW / 2, sigY + 10, { align: 'center' });
+
+  // --- PIE ---
+  doc.setFillColor(...azul);
+  doc.rect(0, 282, W, 15, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Documento generado por GestiObra - ' + new Date().toLocaleDateString('es-AR'), W / 2, 291, { align: 'center' });
+
+  doc.save('Recibo_' + nroStr + '_' + lm(cliente).replace(/ /g, '_') + '.pdf');
 }
 
 // ============================================================
