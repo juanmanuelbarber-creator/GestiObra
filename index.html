@@ -1,8 +1,11 @@
 <!DOCTYPE html>
+<!-- v2026-03-18-b -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
 <title>GestiObra</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
@@ -1396,7 +1399,7 @@ function exportarVentasPDF() {
 // ============================================================
 async function cargarCobranzas() {
   const { data, error } = await sb.from('v_estado_cobros').select('*').order('fecha', { ascending: false });
-  if (error) { toast('Error cobranzas', 'error'); return; }
+  if (error) { console.error('[cobranzas]', error); toast('Error cobranzas: ' + error.message, 'error'); return; }
   G.cobranzas = (data || []).map(v => ({
     id:        v.id,
     cliente:   v.cliente   || '',
@@ -1523,12 +1526,18 @@ async function confirmarCobro() {
   const imp  = parseFloat(ge('mc-importe').value);
   if (!imp || imp <= 0) { toast('Importe invalido', 'error'); return; }
   const cond = ge('mc-cond').value;
+  const vid  = ge('mc-vid').value;
+  console.log('[cobro] insertando → venta_id:', vid, 'importe:', imp);
   const { error } = await sb.from('cobros').insert({
-    venta_id: ge('mc-vid').value,
+    venta_id: vid,
     fecha:    new Date().toISOString().slice(0, 10),
     importe:  imp
   });
-  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  if (error) {
+    console.error('[cobro] error:', error);
+    toast('Error al guardar cobro: ' + error.message, 'error');
+    return;
+  }
   const nroRecibo = Date.now().toString().slice(-8);
   toast('Cobro registrado — generando recibo...');
   cerrarModal('modal-cobro');
@@ -1557,17 +1566,23 @@ function cargarLogoParaPDF(url) {
 }
 
 async function generarReciboPDF({ vid, cliente, factura, pendiente, obra, importe, fecha, nroRecibo, condicion }) {
-  // Persistir en tabla recibos (silencioso si la tabla no existe aun)
-  await sb.from('recibos').insert({
-    venta_id:    vid || null,
+  // Persistir en tabla recibos
+  const fechaStr2 = (fecha instanceof Date ? fecha : new Date(fecha)).toISOString().slice(0, 10);
+  console.log('[recibo] guardando:', { vid, cliente, factura, importe, fecha: fechaStr2, nroRecibo });
+  const { error: recErr } = await sb.from('recibos').insert({
+    venta_id:    vid    || null,
     cliente:     cliente,
     nro_factura: factura || null,
     obra:        obra    || null,
     importe:     importe,
     condicion:   condicion || null,
-    fecha:       (fecha instanceof Date ? fecha : new Date(fecha)).toISOString().slice(0, 10),
+    fecha:       fechaStr2,
     nro_recibo:  String(nroRecibo)
-  }).then(({ error }) => { if (error && error.code !== '42P01') console.warn('recibos insert:', error.message); });
+  });
+  if (recErr) {
+    console.error('[recibo] error:', recErr);
+    if (recErr.code !== '42P01') toast('Aviso: recibo no guardado en BD — ' + recErr.message, 'error');
+  }
 
   const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
   const lm  = t => t ? String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9 \-\.\,\/\$\#\:]/g, '') : '';
@@ -2335,14 +2350,25 @@ async function guardarConfigUI() {
     empresa_direccion: ge('cfg-dir').value,
     logo_url:          ge('cfg-logo').value
   };
+  let errores = [];
   for (const [clave, valor] of Object.entries(items)) {
-    const { data: upd } = await sb.from('config').update({ valor }).eq('clave', clave).select('clave');
-    if (!upd || upd.length === 0) {
-      await sb.from('config').insert({ clave, valor });
+    let err;
+    if (clave in G.config) {
+      // clave ya existe → UPDATE
+      ({ error: err } = await sb.from('config').update({ valor }).eq('clave', clave));
+    } else {
+      // clave nueva → INSERT
+      ({ error: err } = await sb.from('config').insert({ clave, valor }));
     }
+    if (err) { console.error('config save:', clave, err); errores.push(clave + ': ' + err.message); }
+    else { G.config[clave] = valor; }
   }
-  toast('Configuracion guardada');
-  if (items.empresa_nombre) ge('sb-empresa').textContent = items.empresa_nombre;
+  if (errores.length) {
+    toast('Error guardando: ' + errores[0], 'error');
+  } else {
+    toast('Configuracion guardada');
+    if (items.empresa_nombre) ge('sb-empresa').textContent = items.empresa_nombre;
+  }
 }
 
 // ============================================================
