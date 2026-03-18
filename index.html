@@ -1,8 +1,11 @@
 <!DOCTYPE html>
+<!-- v2026-03-18-b -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
 <title>GestiObra</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
@@ -360,22 +363,46 @@ tbody tr:hover{background:var(--bg3);}
     <!-- COBRANZAS -->
     <div class="page" id="page-cobranzas">
       <div class="section-header">
-        <div class="section-title">Estado de Cobranzas</div>
-        <button class="btn btn-secondary btn-sm" onclick="toggleVerTodasCob()"><i class="fas fa-eye"></i> <span id="cob-toggle-txt">Ver todas</span></button>
+        <div class="tabs">
+          <button class="tab-btn active" id="cob-tab-estado" onclick="switchTab('cobranzas','estado')">Estado de Cobranzas</button>
+          <button class="tab-btn" id="cob-tab-recibos" onclick="switchTab('cobranzas','recibos')">Recibos</button>
+        </div>
       </div>
-      <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:18px;">
-        <div class="stat-card green"><div class="stat-label">Total cobrado</div><div class="stat-value" id="cob-cobrado">$0</div></div>
-        <div class="stat-card red">  <div class="stat-label">Total pendiente</div><div class="stat-value" id="cob-pendiente">$0</div></div>
+
+      <!-- TAB: Estado -->
+      <div id="cob-panel-estado">
+        <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:18px;">
+          <div class="stat-card green"><div class="stat-label">Total cobrado</div><div class="stat-value" id="cob-cobrado">$0</div></div>
+          <div class="stat-card red">  <div class="stat-label">Total pendiente</div><div class="stat-value" id="cob-pendiente">$0</div></div>
+        </div>
+        <div class="filters" style="display:flex;gap:8px;align-items:center;">
+          <input class="filter-input" type="text" id="cob-busq" placeholder="Buscar cliente...">
+          <button class="btn btn-secondary btn-sm" onclick="toggleVerTodasCob()"><i class="fas fa-eye"></i> <span id="cob-toggle-txt">Ver todas</span></button>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr>
+            <th>Cliente</th><th>Factura</th><th>Obra</th>
+            <th class="td-r">Total</th><th class="td-r">Cobrado</th><th class="td-r">Pendiente</th>
+            <th class="td-c">Estado</th><th class="td-c">Acc.</th>
+          </tr></thead><tbody id="cob-tbody"></tbody></table>
+        </div>
+        <div class="pagination" id="cob-pag"></div>
       </div>
-      <div class="filters"><input class="filter-input" type="text" id="cob-busq" placeholder="Buscar cliente..."></div>
-      <div class="table-wrap">
-        <table><thead><tr>
-          <th>Cliente</th><th>Factura</th><th>Obra</th>
-          <th class="td-r">Total</th><th class="td-r">Cobrado</th><th class="td-r">Pendiente</th>
-          <th class="td-c">Estado</th><th class="td-c">Acc.</th>
-        </tr></thead><tbody id="cob-tbody"></tbody></table>
+
+      <!-- TAB: Recibos -->
+      <div id="cob-panel-recibos" style="display:none;">
+        <div class="filters" style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
+          <input class="filter-input" type="text" id="rec-busq" placeholder="Buscar cliente o N° recibo..." oninput="renderRecibos()">
+        </div>
+        <div id="rec-sin-tabla" class="empty-state" style="display:none;"><i class="fas fa-receipt"></i><p>Para ver el historial de recibos, crea la tabla <code>recibos</code> en Supabase (ver consola para el SQL).</p></div>
+        <div class="table-wrap" id="rec-tabla-wrap">
+          <table><thead><tr>
+            <th>N° Recibo</th><th>Fecha</th><th>Cliente</th><th>Factura</th><th>Obra</th>
+            <th class="td-r">Importe</th><th>Condicion</th><th class="td-c">Acc.</th>
+          </tr></thead><tbody id="rec-tbody"></tbody></table>
+        </div>
+        <div class="pagination" id="rec-pag"></div>
       </div>
-      <div class="pagination" id="cob-pag"></div>
     </div>
 
     <!-- COMPRAS -->
@@ -720,11 +747,12 @@ const G = {
   empleados:    [],
   materiales:   [],
   config:       {},
+  recibos:      [],
   charts:       {}
 };
 
 const PER_PAG = 15;
-const pags    = { ventas: 1, cob: 1, compras: 1 };
+const pags    = { ventas: 1, cob: 1, compras: 1, rec: 1 };
 let verTodasCob = false;
 let cobroCtx = {};
 const archivos  = { v: null, cp: null };
@@ -907,6 +935,12 @@ function switchTab(mod, tab) {
     btns[0].classList.toggle('active', tab === 'lista');
     btns[1].classList.toggle('active', tab === 'nueva');
     if (tab === 'lista') cargarCompras();
+  } else if (mod === 'cobranzas') {
+    ge('cob-panel-estado').style.display  = tab === 'estado'  ? 'block' : 'none';
+    ge('cob-panel-recibos').style.display = tab === 'recibos' ? 'block' : 'none';
+    ge('cob-tab-estado').classList.toggle('active',  tab === 'estado');
+    ge('cob-tab-recibos').classList.toggle('active', tab === 'recibos');
+    if (tab === 'recibos') cargarRecibos();
   } else if (mod === 'cl') {
     ge('cl-clientes').style.display = tab === 'clientes' ? 'block' : 'none';
     ge('cl-obras').style.display    = tab === 'obras'    ? 'block' : 'none';
@@ -1365,7 +1399,7 @@ function exportarVentasPDF() {
 // ============================================================
 async function cargarCobranzas() {
   const { data, error } = await sb.from('v_estado_cobros').select('*').order('fecha', { ascending: false });
-  if (error) { toast('Error cobranzas', 'error'); return; }
+  if (error) { console.error('[cobranzas]', error); toast('Error cobranzas: ' + error.message, 'error'); return; }
   G.cobranzas = (data || []).map(v => ({
     id:        v.id,
     cliente:   v.cliente   || '',
@@ -1415,6 +1449,64 @@ function renderCobranzas() {
   renderPag('cob-pag', lista.length, pags.cob, p => { pags.cob = p; renderCobranzas(); });
 }
 
+async function cargarRecibos() {
+  const { data, error } = await sb.from('recibos').select('*').order('created_at', { ascending: false });
+  if (error) {
+    if (error.code === '42P01') { // tabla no existe
+      ge('rec-sin-tabla').style.display = 'flex';
+      ge('rec-tabla-wrap').style.display = 'none';
+      console.info('Crea la tabla recibos en Supabase:\n\nCREATE TABLE recibos (\n  id bigint generated always as identity primary key,\n  venta_id text,\n  cliente text not null,\n  nro_factura text,\n  obra text,\n  importe numeric not null,\n  condicion text,\n  fecha date not null,\n  nro_recibo text not null,\n  created_at timestamptz default now()\n);\nALTER TABLE recibos ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "recibos_all" ON recibos FOR ALL USING (true);');
+    } else {
+      toast('Error cargando recibos: ' + error.message, 'error');
+    }
+    return;
+  }
+  ge('rec-sin-tabla').style.display = 'none';
+  ge('rec-tabla-wrap').style.display = 'block';
+  G.recibos = data || [];
+  pags.rec = 1;
+  renderRecibos();
+}
+
+function renderRecibos() {
+  const busq = (ge('rec-busq')?.value || '').toLowerCase();
+  let lista = G.recibos || [];
+  if (busq) lista = lista.filter(r =>
+    (r.cliente || '').toLowerCase().includes(busq) ||
+    (r.nro_recibo || '').includes(busq) ||
+    (r.nro_factura || '').toLowerCase().includes(busq)
+  );
+  const ini = ((pags.rec || 1) - 1) * PER_PAG;
+  const pag = lista.slice(ini, ini + PER_PAG);
+  const tb  = ge('rec-tbody');
+  tb.innerHTML = '';
+  if (!pag.length) {
+    tb.innerHTML = '<tr><td colspan="8"><div class="empty-state"><i class="fas fa-receipt"></i>Sin recibos</div></td></tr>';
+    renderPag('rec-pag', 0, 1, () => {});
+    return;
+  }
+  pag.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.appendChild(mkTd(`<strong>${r.nro_recibo}</strong>`));
+    tr.appendChild(mkTd(r.fecha ? new Date(r.fecha + 'T00:00:00').toLocaleDateString('es-AR') : '-'));
+    tr.appendChild(mkTd(`<strong>${r.cliente}</strong>`));
+    tr.appendChild(mkTd(`<span style="color:var(--accent)">${r.nro_factura || '-'}</span>`));
+    tr.appendChild(mkTd(`<span style="color:var(--muted)">${r.obra || '-'}</span>`));
+    tr.appendChild(mkTd(fmt(r.importe), 'td-r'));
+    tr.appendChild(mkTd(r.condicion || '-'));
+    const tdAcc = document.createElement('td');
+    tdAcc.className = 'td-c';
+    tdAcc.appendChild(mkBtn('btn-primary', 'download', () => generarReciboPDF({
+      vid: r.venta_id, cliente: r.cliente, factura: r.nro_factura, pendiente: r.importe,
+      obra: r.obra, importe: r.importe, fecha: new Date(r.fecha + 'T00:00:00'),
+      nroRecibo: r.nro_recibo, condicion: r.condicion
+    })));
+    tr.appendChild(tdAcc);
+    tb.appendChild(tr);
+  });
+  renderPag('rec-pag', lista.length, pags.rec || 1, p => { pags.rec = p; renderRecibos(); });
+}
+
 function toggleVerTodasCob() {
   verTodasCob = !verTodasCob;
   ge('cob-toggle-txt').textContent = verTodasCob ? 'Solo pendientes' : 'Ver todas';
@@ -1434,152 +1526,212 @@ async function confirmarCobro() {
   const imp  = parseFloat(ge('mc-importe').value);
   if (!imp || imp <= 0) { toast('Importe invalido', 'error'); return; }
   const cond = ge('mc-cond').value;
-  const { data: cobData, error } = await sb.from('cobros').insert({
-    venta_id: ge('mc-vid').value,
+  const vid  = ge('mc-vid').value;
+  console.log('[cobro] insertando → venta_id:', vid, 'importe:', imp);
+  const { error } = await sb.from('cobros').insert({
+    venta_id: vid,
     fecha:    new Date().toISOString().slice(0, 10),
     importe:  imp
-  }).select('id').single();
-  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  });
+  if (error) {
+    console.error('[cobro] error:', error);
+    toast('Error al guardar cobro: ' + error.message, 'error');
+    return;
+  }
+  const nroRecibo = Date.now().toString().slice(-8);
   toast('Cobro registrado — generando recibo...');
   cerrarModal('modal-cobro');
-  generarReciboPDF({ ...cobroCtx, importe: imp, fecha: new Date(), nroRecibo: cobData?.id, condicion: cond });
+  generarReciboPDF({ ...cobroCtx, importe: imp, fecha: new Date(), nroRecibo, condicion: cond });
   cargarCobranzas();
   cargarDashboard();
 }
 
-function generarReciboPDF({ vid, cliente, factura, pendiente, obra, importe, fecha, nroRecibo, condicion }) {
-  const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
-  const lm  = t => t ? String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9 \-\.\,\/\$\#\:]/g, '') : '';
-  const W = 210, M = 15;
-  const azul = [30, 58, 138];
-  const gris = [120, 120, 120];
+function cargarLogoParaPDF(url) {
+  return new Promise(resolve => {
+    if (!url) { resolve(null); return; }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width  = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      } catch { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
 
-  const empresa  = lm(G.config.empresa_nombre    || 'Empresa');
-  const cuitEmp  = lm(G.config.empresa_cuit       || '');
-  const dirEmp   = lm(G.config.empresa_direccion  || '');
-
-  // Buscar CUIT del cliente en maestros
-  const clienteData = G.clientes.find(c => c.nombre === cliente) || {};
-  const cuitCli = lm(clienteData.cuit || '');
-
-  const nroStr = nroRecibo ? String(nroRecibo).padStart(8, '0') : String(Date.now()).slice(-8);
-
-  // --- ENCABEZADO ---
-  doc.setFillColor(...azul);
-  doc.rect(0, 0, W, 35, 'F');
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(26);
-  doc.setFont('helvetica', 'bold');
-  doc.text('RECIBO', M, 15);
-
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text(empresa, M, 22);
-  if (cuitEmp)  doc.text('CUIT: ' + cuitEmp, M, 28);
-  if (dirEmp)   doc.text(dirEmp, M, 34);
-
-  // Caja numero de recibo (derecha)
-  doc.setFontSize(8);
-  doc.text('N\u00b0 RECIBO', W - M, 13, { align: 'right' });
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text(nroStr, W - M, 22, { align: 'right' });
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text(fecha.toLocaleDateString('es-AR'), W - M, 30, { align: 'right' });
-
-  let y = 48;
-
-  // --- DATOS DEL CLIENTE ---
-  doc.setTextColor(...azul);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.text('DATOS DEL CLIENTE', M, y);
-  y += 1;
-  doc.setDrawColor(...azul);
-  doc.setLineWidth(0.3);
-  doc.line(M, y, W - M, y);
-  y += 6;
-
-  doc.setTextColor(0, 0, 0);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text('Razon social: ' + lm(cliente), M, y); y += 6;
-  if (cuitCli) { doc.text('CUIT: ' + cuitCli, M, y); y += 6; }
-  y += 4;
-
-  // --- DETALLE DEL COBRO ---
-  doc.setTextColor(...azul);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.text('DETALLE DEL COBRO', M, y);
-  y += 1;
-  doc.line(M, y, W - M, y);
-  y += 6;
-
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(10);
-  const col2 = M + 42;
-
-  doc.setFont('helvetica', 'normal'); doc.text('Comprobante:', M, y);
-  doc.setFont('helvetica', 'bold');   doc.text(lm(factura), col2, y); y += 6;
-
-  if (obra) {
-    doc.setFont('helvetica', 'normal'); doc.text('Obra:', M, y);
-    doc.setFont('helvetica', 'bold');   doc.text(lm(obra), col2, y); y += 6;
+async function generarReciboPDF({ vid, cliente, factura, pendiente, obra, importe, fecha, nroRecibo, condicion }) {
+  // Persistir en tabla recibos
+  const fechaStr2 = (fecha instanceof Date ? fecha : new Date(fecha)).toISOString().slice(0, 10);
+  console.log('[recibo] guardando:', { vid, cliente, factura, importe, fecha: fechaStr2, nroRecibo });
+  const { error: recErr } = await sb.from('recibos').insert({
+    venta_id:    vid    || null,
+    cliente:     cliente,
+    nro_factura: factura || null,
+    obra:        obra    || null,
+    importe:     importe,
+    condicion:   condicion || null,
+    fecha:       fechaStr2,
+    nro_recibo:  String(nroRecibo)
+  });
+  if (recErr) {
+    console.error('[recibo] error:', recErr);
+    if (recErr.code !== '42P01') toast('Aviso: recibo no guardado en BD — ' + recErr.message, 'error');
   }
 
-  doc.setFont('helvetica', 'normal'); doc.text('Condicion:', M, y);
-  doc.setFont('helvetica', 'bold');   doc.text(lm(condicion), col2, y); y += 6;
+  const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
+  const lm  = t => t ? String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9 \-\.\,\/\$\#\:]/g, '') : '';
+  const W = 210, M = 18;
 
-  doc.setFont('helvetica', 'normal'); doc.text('Fecha de cobro:', M, y);
-  doc.setFont('helvetica', 'bold');   doc.text(fecha.toLocaleDateString('es-AR'), col2, y); y += 10;
+  // Paleta
+  const ink    = [15,  23,  42];   // casi negro (slate-900)
+  const accent = [37,  99, 235];   // azul moderno
+  const muted  = [100, 116, 139];  // gris medio
+  const light  = [248, 250, 252];  // fondo caja importe
 
-  // --- CAJA IMPORTE ---
-  doc.setFillColor(241, 245, 249);
-  doc.roundedRect(M, y, W - M * 2, 24, 3, 3, 'F');
-  doc.setTextColor(...gris);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.text('IMPORTE COBRADO', W / 2, y + 8, { align: 'center' });
-  doc.setTextColor(...azul);
-  doc.setFontSize(22);
+  const empresa = lm(G.config.empresa_nombre   || 'Empresa');
+  const cuitEmp = lm(G.config.empresa_cuit      || '');
+  const dirEmp  = lm(G.config.empresa_direccion || '');
+
+  const clienteData = G.clientes.find(c => c.nombre === cliente) || {};
+  const cuitCli     = lm(clienteData.cuit || '');
+
+  const nroStr   = nroRecibo ? String(nroRecibo).padStart(8, '0') : String(Date.now()).slice(-8);
+  const fechaStr = fecha.toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  // Logo (opcional)
+  const logoData = await cargarLogoParaPDF(G.config.logo_url || '');
+
+  // ── ENCABEZADO ──────────────────────────────────────────
+  let logoW = 0;
+  if (logoData) {
+    const maxH = 18, maxW = 40;
+    const tmpImg = new Image(); tmpImg.src = logoData;
+    const ratio  = tmpImg.naturalWidth / tmpImg.naturalHeight || 1;
+    const h = Math.min(maxH, maxW / ratio);
+    const w = h * ratio;
+    logoW = w + 5;
+    doc.addImage(logoData, 'PNG', M, 12, w, h);
+  }
+
+  const infoX = M + logoW;
+  doc.setTextColor(...ink);
   doc.setFont('helvetica', 'bold');
-  doc.text(fmt(importe), W / 2, y + 18, { align: 'center' });
-  y += 32;
-
-  // --- CONCEPTO ---
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(9);
+  doc.setFontSize(11);
+  doc.text(empresa, infoX, 16);
   doc.setFont('helvetica', 'normal');
-  const tipoPago = importe >= pendiente - 0.01 ? 'total' : 'parcial';
-  const concepto = 'Recibo en concepto de pago ' + tipoPago + ' de ' + lm(factura) + (obra ? ' - Obra: ' + lm(obra) : '');
-  doc.text(concepto, M, y, { maxWidth: W - M * 2 }); y += 20;
-
-  // --- FIRMAS ---
-  doc.setDrawColor(180, 180, 180);
-  doc.setLineWidth(0.3);
-  const sigW = 65, sigY = y + 18;
-
-  doc.line(M, sigY, M + sigW, sigY);
-  doc.setTextColor(...gris);
   doc.setFontSize(8);
-  doc.text('Firma y Aclaracion', M + sigW / 2, sigY + 5, { align: 'center' });
-  doc.text('Emisor', M + sigW / 2, sigY + 10, { align: 'center' });
+  doc.setTextColor(...muted);
+  let iy = 21;
+  if (cuitEmp) { doc.text('CUIT: ' + cuitEmp, infoX, iy); iy += 4.5; }
+  if (dirEmp)  { doc.text(dirEmp, infoX, iy); }
+
+  // Bloque RECIBO (derecha)
+  doc.setTextColor(...accent);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(22);
+  doc.text('RECIBO', W - M, 17, { align: 'right' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...muted);
+  doc.text('N\u00b0 ' + nroStr, W - M, 23, { align: 'right' });
+  doc.text(fechaStr, W - M, 28, { align: 'right' });
+
+  // Línea separadora delgada
+  doc.setDrawColor(...accent);
+  doc.setLineWidth(0.6);
+  doc.line(M, 34, W - M, 34);
+
+  let y = 44;
+
+  // ── SECCIÓN HELPER ──────────────────────────────────────
+  function seccion(titulo) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(...muted);
+    doc.text(titulo, M, y);
+    y += 1.5;
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.2);
+    doc.line(M, y, W - M, y);
+    y += 5;
+  }
+
+  function fila(label, valor, negrita) {
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...muted);
+    doc.text(label, M, y);
+    doc.setFont('helvetica', negrita ? 'bold' : 'normal');
+    doc.setTextColor(...ink);
+    doc.text(lm(String(valor)), M + 46, y);
+    y += 6;
+  }
+
+  // ── RECIBÍ DE ───────────────────────────────────────────
+  seccion('RECIB\u00cd DE');
+  fila('Raz\u00f3n social', cliente, true);
+  if (cuitCli) fila('CUIT', cuitCli, false);
+  y += 6;
+
+  // ── LA SUMA DE ──────────────────────────────────────────
+  seccion('LA SUMA DE');
+  doc.setFillColor(...light);
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(M, y, W - M * 2, 20, 2, 2, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(...ink);
+  doc.text(fmt(importe), W / 2, y + 13, { align: 'center' });
+  y += 28;
+
+  // ── EN CONCEPTO DE ──────────────────────────────────────
+  seccion('EN CONCEPTO DE');
+  fila('Comprobante', factura, true);
+  if (obra) fila('Obra', obra, false);
+  fila('Condici\u00f3n', condicion, false);
+  fila('Fecha de cobro', fecha.toLocaleDateString('es-AR'), false);
+  y += 4;
+
+  // Nota concepto
+  const tipoPago = importe >= pendiente - 0.01 ? 'total' : 'parcial';
+  const nota = 'Pago ' + tipoPago + ' correspondiente a ' + lm(factura) + (obra ? ', obra: ' + lm(obra) : '') + '.';
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8.5);
+  doc.setTextColor(...muted);
+  doc.text(nota, M, y, { maxWidth: W - M * 2 });
+  y += 16;
+
+  // ── FIRMAS ──────────────────────────────────────────────
+  const sigW = 70, sigY = Math.max(y + 14, 210);
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.4);
+  doc.line(M, sigY, M + sigW, sigY);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...muted);
+  doc.text('Firma y aclaraci\u00f3n  \u2014  Emisor', M + sigW / 2, sigY + 5, { align: 'center' });
 
   const rx = W - M - sigW;
   doc.line(rx, sigY, rx + sigW, sigY);
-  doc.text('Firma y Aclaracion', rx + sigW / 2, sigY + 5, { align: 'center' });
-  doc.text('Receptor', rx + sigW / 2, sigY + 10, { align: 'center' });
+  doc.text('Firma y aclaraci\u00f3n  \u2014  Receptor', rx + sigW / 2, sigY + 5, { align: 'center' });
 
-  // --- PIE ---
-  doc.setFillColor(...azul);
-  doc.rect(0, 282, W, 15, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(7);
+  // ── PIE ─────────────────────────────────────────────────
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.3);
+  doc.line(M, 284, W - M, 284);
   doc.setFont('helvetica', 'normal');
-  doc.text('Documento generado por GestiObra - ' + new Date().toLocaleDateString('es-AR'), W / 2, 291, { align: 'center' });
+  doc.setFontSize(7);
+  doc.setTextColor(...muted);
+  doc.text('GestiObra  \u00b7  Documento generado el ' + new Date().toLocaleDateString('es-AR'), M, 289);
+  doc.text('Recibo N\u00b0 ' + nroStr, W - M, 289, { align: 'right' });
 
   doc.save('Recibo_' + nroStr + '_' + lm(cliente).replace(/ /g, '_') + '.pdf');
 }
@@ -2198,11 +2350,25 @@ async function guardarConfigUI() {
     empresa_direccion: ge('cfg-dir').value,
     logo_url:          ge('cfg-logo').value
   };
+  let errores = [];
   for (const [clave, valor] of Object.entries(items)) {
-    await sb.from('config').update({ valor }).eq('clave', clave);
+    let err;
+    if (clave in G.config) {
+      // clave ya existe → UPDATE
+      ({ error: err } = await sb.from('config').update({ valor }).eq('clave', clave));
+    } else {
+      // clave nueva → INSERT
+      ({ error: err } = await sb.from('config').insert({ clave, valor }));
+    }
+    if (err) { console.error('config save:', clave, err); errores.push(clave + ': ' + err.message); }
+    else { G.config[clave] = valor; }
   }
-  toast('Configuracion guardada');
-  if (items.empresa_nombre) ge('sb-empresa').textContent = items.empresa_nombre;
+  if (errores.length) {
+    toast('Error guardando: ' + errores[0], 'error');
+  } else {
+    toast('Configuracion guardada');
+    if (items.empresa_nombre) ge('sb-empresa').textContent = items.empresa_nombre;
+  }
 }
 
 // ============================================================
