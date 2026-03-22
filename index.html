@@ -2074,7 +2074,9 @@ function toggleComprobante() {
 }
 
 async function confirmarPago() {
+  console.log('[confirmarPago] inicio');
   const imp  = parseFloat(ge('mp-importe').value);
+  console.log('[confirmarPago] importe:', imp);
   if (!imp || imp <= 0) { toast('Importe invalido', 'error'); return; }
   const cond    = ge('mp-cond').value;
   const banco   = ge('mp-banco').value  || null;
@@ -2086,6 +2088,7 @@ async function confirmarPago() {
   const { error: insErr } = await sb.from('pagos').insert({
     compra_id: cid, fecha, importe: imp, condicion: cond, banco, nro_cheque: cheque
   });
+  console.log('[confirmarPago] insert result - insErr:', insErr);
   if (insErr) { toast('Error al registrar pago: ' + insErr.message, 'error'); return; }
 
   // Obtener el ID del pago recién insertado
@@ -2098,6 +2101,7 @@ async function confirmarPago() {
     .maybeSingle();
 
   const pagoId    = pagoRow?.id ?? null;
+  console.log('[confirmarPago] pagoId:', pagoId, '| pagoCtx:', JSON.stringify(pagoCtx));
   const nroRecibo = `RP-${Date.now().toString().slice(-8)}`;
 
   // 2. Subir comprobante si hay archivo (Transferencia)
@@ -2131,6 +2135,7 @@ async function confirmarPago() {
     nro_recibo:      nroRecibo,
     url_comprobante: urlComprobante
   });
+  console.log('[confirmarPago] recibos_pagos result - recErr:', recErr);
   if (recErr) {
     console.error('[recibo_pago]', recErr);
     toast('Aviso: recibo no guardado — ' + recErr.message, 'error');
