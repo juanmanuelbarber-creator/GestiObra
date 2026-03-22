@@ -1911,7 +1911,7 @@ function renderCompras() {
     tdAcc.className = 'td-c';
     tdAcc.style.whiteSpace = 'nowrap';
     if (c.pendiente > 0.01) {
-      tdAcc.appendChild(mkBtn('btn-success', 'dollar-sign', () => abrirPago(c.id, c.proveedor, c.pendiente)));
+      tdAcc.appendChild(mkBtn('btn-success', 'dollar-sign', () => abrirPago(c.id, c.proveedor, c.nro_factura, c.obra, c.pendiente)));
       tdAcc.appendChild(document.createTextNode(' '));
     }
     tdAcc.appendChild(mkBtn('btn-danger', 'trash', () => eliminarCompraUI(c.id)));
@@ -2082,19 +2082,21 @@ async function confirmarPago() {
   const cid     = ge('mp-cid').value;
   const fecha   = new Date().toISOString().slice(0, 10);
 
+  // 1. Insertar pago
   const { data: pagoDat, error } = await sb.from('pagos').insert({
     compra_id: cid, fecha, importe: imp, condicion: cond, banco, nro_cheque: cheque
-  }).select().single();
-  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  }).select('id').single();
+  if (error) { toast('Error al registrar pago: ' + error.message, 'error'); return; }
 
-  const nroRecibo = Date.now().toString().slice(-8);
+  const pagoId    = pagoDat?.id ?? null;
+  const nroRecibo = `RP-${Date.now().toString().slice(-8)}`;
 
-  // Subir comprobante si hay archivo
+  // 2. Subir comprobante si hay archivo (Transferencia)
   let urlComprobante = null;
   if (archivos['mp']) {
     const file = archivos['mp'];
     const ext  = file.name.split('.').pop();
-    const path = `pagos/${pagoDat.id}_${Date.now()}.${ext}`;
+    const path = `pagos/${cid}_${Date.now()}.${ext}`;
     const { error: upErr } = await sb.storage.from('documentos').upload(path, file, { upsert: true, contentType: file.type });
     if (!upErr) {
       const { data: { publicUrl } } = sb.storage.from('documentos').getPublicUrl(path);
@@ -2105,13 +2107,13 @@ async function confirmarPago() {
     archivos['mp'] = null;
   }
 
-  // Guardar en recibos_pagos
+  // 3. Guardar recibo en recibos_pagos
   const { error: recErr } = await sb.from('recibos_pagos').insert({
-    pago_id:         pagoDat.id,
-    compra_id:       cid,
-    proveedor:       pagoCtx.prov,
-    nro_factura:     pagoCtx.factura || null,
-    obra:            pagoCtx.obra    || null,
+    pago_id:         pagoId,
+    compra_id:       String(cid),
+    proveedor:       pagoCtx.prov      || '',
+    nro_factura:     pagoCtx.factura   || null,
+    obra:            pagoCtx.obra      || null,
     importe:         imp,
     condicion:       cond,
     banco:           banco,
@@ -2120,14 +2122,26 @@ async function confirmarPago() {
     nro_recibo:      nroRecibo,
     url_comprobante: urlComprobante
   });
-  if (recErr && recErr.code !== '42P01') {
+  if (recErr) {
     console.error('[recibo_pago]', recErr);
-    toast('Aviso: recibo no guardado en BD — ' + recErr.message, 'error');
+    toast('Aviso: recibo no guardado — ' + recErr.message, 'error');
   }
 
-  toast('Pago registrado — generando recibo...');
+  // 4. Generar PDF y actualizar UI
+  toast('Pago registrado — descargando recibo...');
   cerrarModal('modal-pago');
-  generarOrdenPagoPDF({ ...pagoCtx, importe: imp, fecha: new Date(), nroRecibo, condicion: cond, banco, cheque });
+  generarOrdenPagoPDF({
+    prov:      pagoCtx.prov,
+    factura:   pagoCtx.factura,
+    obra:      pagoCtx.obra,
+    pendiente: pagoCtx.pendiente,
+    importe:   imp,
+    fecha:     new Date(),
+    nroRecibo,
+    condicion: cond,
+    banco,
+    cheque
+  });
   cargarPagos();
   cargarDashboard();
 }
