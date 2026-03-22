@@ -519,17 +519,41 @@ tbody tr:hover{background:var(--bg3);}
 
     <!-- PAGOS -->
     <div class="page" id="page-pagos">
-      <div class="section-header"><div class="section-title">Pagos a Proveedores</div></div>
-      <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:18px;">
-        <div class="stat-card green"><div class="stat-label">Total pagado</div><div class="stat-value" id="pag-pagado">$0</div></div>
-        <div class="stat-card red">  <div class="stat-label">Total adeudado</div><div class="stat-value" id="pag-adeudado">$0</div></div>
+      <div class="section-header">
+        <div class="tabs">
+          <button class="tab-btn active" id="pag-tab-estado"  onclick="switchTab('pagos','estado')">Estado de Pagos</button>
+          <button class="tab-btn"        id="pag-tab-recibos" onclick="switchTab('pagos','recibos')">Recibos de Pago</button>
+        </div>
       </div>
-      <div class="table-wrap">
-        <table><thead><tr>
-          <th>Proveedor</th><th>Factura</th><th>Obra</th>
-          <th class="td-r">Total</th><th class="td-r">Pagado</th><th class="td-r">Deuda</th>
-          <th class="td-c">Estado</th><th class="td-c">Acc.</th>
-        </tr></thead><tbody id="pag-tbody"></tbody></table>
+
+      <!-- TAB: Estado -->
+      <div id="pag-panel-estado">
+        <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:18px;">
+          <div class="stat-card green"><div class="stat-label">Total pagado</div><div class="stat-value" id="pag-pagado">$0</div></div>
+          <div class="stat-card red">  <div class="stat-label">Total adeudado</div><div class="stat-value" id="pag-adeudado">$0</div></div>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr>
+            <th>Proveedor</th><th>Factura</th><th>Obra</th>
+            <th class="td-r">Total</th><th class="td-r">Pagado</th><th class="td-r">Deuda</th>
+            <th class="td-c">Estado</th><th class="td-c">Acc.</th>
+          </tr></thead><tbody id="pag-tbody"></tbody></table>
+        </div>
+      </div>
+
+      <!-- TAB: Recibos de Pago -->
+      <div id="pag-panel-recibos" style="display:none;">
+        <div class="filters" style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
+          <input class="filter-input" type="text" id="rp-busq" placeholder="Buscar proveedor o N° recibo..." oninput="renderRecibosPagos()">
+        </div>
+        <div id="rp-sin-tabla" class="empty-state" style="display:none;"><i class="fas fa-receipt"></i><p>Para ver el historial de recibos de pago, crea la tabla <code>recibos_pagos</code> en Supabase (ver consola para el SQL).</p></div>
+        <div class="table-wrap" id="rp-tabla-wrap">
+          <table><thead><tr>
+            <th>N° Recibo</th><th>Fecha</th><th>Proveedor</th><th>Factura</th><th>Obra</th>
+            <th class="td-r">Importe</th><th>Condicion</th><th class="td-c">Acc.</th>
+          </tr></thead><tbody id="rp-tbody"></tbody></table>
+        </div>
+        <div class="pagination" id="rp-pag"></div>
       </div>
     </div>
 
@@ -646,13 +670,22 @@ tbody tr:hover{background:var(--bg3);}
     <div id="mp-info" style="margin-bottom:14px;font-size:13px;color:var(--muted);"></div>
     <div class="form-grid">
       <div class="form-group"><label>Importe *</label><input type="number" step="0.01" id="mp-importe"></div>
-      <div class="form-group"><label>Condicion</label><select id="mp-cond"><option>Transferencia</option><option>Cheque</option><option>e-Cheq</option><option>Contado</option></select></div>
+      <div class="form-group"><label>Condicion</label><select id="mp-cond" onchange="toggleComprobante()"><option>Transferencia</option><option>Cheque</option><option>e-Cheq</option><option>Contado</option></select></div>
       <div class="form-group"><label>Banco</label><input type="text" id="mp-banco"></div>
       <div class="form-group"><label>N. Cheque</label><input type="text" id="mp-cheque"></div>
+      <div class="form-group full" id="mp-upload-group">
+        <label>Comprobante de transferencia</label>
+        <div class="upload-area" id="mp-upload-area">
+          <input type="file" id="mp-file" accept="image/*,application/pdf">
+          <div class="up-icon"><i class="fas fa-upload"></i></div>
+          <div class="up-label">Arrastrá o hacé clic para subir el comprobante</div>
+        </div>
+        <div id="mp-file-preview" style="display:none;"></div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="cerrarModal('modal-pago')">Cancelar</button>
-      <button class="btn btn-success" onclick="confirmarPago()"><i class="fas fa-check"></i> Confirmar</button>
+      <button class="btn btn-success" onclick="confirmarPago()"><i class="fas fa-check"></i> Confirmar y generar recibo</button>
     </div>
   </div>
 </div>
@@ -748,14 +781,16 @@ const G = {
   materiales:   [],
   config:       {},
   recibos:      [],
+  recibosPagos: [],
   charts:       {}
 };
 
 const PER_PAG = 15;
-const pags    = { ventas: 1, cob: 1, compras: 1, rec: 1 };
+const pags    = { ventas: 1, cob: 1, compras: 1, rec: 1, rp: 1 };
 let verTodasCob = false;
 let cobroCtx = {};
-const archivos  = { v: null, cp: null };
+let pagoCtx  = {};
+const archivos  = { v: null, cp: null, mp: null };
 
 // ============================================================
 // HELPERS
@@ -941,6 +976,12 @@ function switchTab(mod, tab) {
     ge('cob-tab-estado').classList.toggle('active',  tab === 'estado');
     ge('cob-tab-recibos').classList.toggle('active', tab === 'recibos');
     if (tab === 'recibos') cargarRecibos();
+  } else if (mod === 'pagos') {
+    ge('pag-panel-estado').style.display  = tab === 'estado'  ? 'block' : 'none';
+    ge('pag-panel-recibos').style.display = tab === 'recibos' ? 'block' : 'none';
+    ge('pag-tab-estado').classList.toggle('active',  tab === 'estado');
+    ge('pag-tab-recibos').classList.toggle('active', tab === 'recibos');
+    if (tab === 'recibos') cargarRecibosPagos();
   } else if (mod === 'cl') {
     ge('cl-clientes').style.display = tab === 'clientes' ? 'block' : 'none';
     ge('cl-obras').style.display    = tab === 'obras'    ? 'block' : 'none';
@@ -1434,7 +1475,7 @@ function renderCobranzas() {
   pag.forEach(v => {
     const tr = document.createElement('tr');
     tr.appendChild(mkTd(`<strong>${v.cliente}</strong>`));
-    tr.appendChild(mkTd(`<span style="color:var(--accent)">${v.tipo}${v.factura}</span>`));
+    tr.appendChild(mkTd(`<span style="color:var(--accent)">${v.factura}</span>`));
     tr.appendChild(mkTd(`<span style="color:var(--muted)">${v.obra || '-'}</span>`));
     tr.appendChild(mkTd(fmt(v.total), 'td-r'));
     tr.appendChild(mkTd(`<span style="color:var(--success)">${fmt(v.cobrado)}</span>`, 'td-r'));
@@ -1442,7 +1483,7 @@ function renderCobranzas() {
     tr.appendChild(mkTd(`<span class="badge ${badge(v.estado)}">${v.estado}</span>`, 'td-c'));
     const tdAcc = document.createElement('td');
     tdAcc.className = 'td-c';
-    if (v.pendiente > 0.01) tdAcc.appendChild(mkBtn('btn-success', 'dollar-sign', () => abrirCobro(v.id, v.cliente, v.tipo + v.factura, v.pendiente, v.obra)));
+    if (v.pendiente > 0.01) tdAcc.appendChild(mkBtn('btn-success', 'dollar-sign', () => abrirCobro(v.id, v.cliente, v.factura, v.pendiente, v.obra)));
     tr.appendChild(tdAcc);
     tb.appendChild(tr);
   });
@@ -1501,10 +1542,24 @@ function renderRecibos() {
       obra: r.obra, importe: r.importe, fecha: new Date(r.fecha + 'T00:00:00'),
       nroRecibo: r.nro_recibo, condicion: r.condicion
     })));
+    if (G.rol === 'admin') {
+      tdAcc.appendChild(mkBtn('btn-danger', 'trash', () => eliminarCobroUI(r)));
+    }
     tr.appendChild(tdAcc);
     tb.appendChild(tr);
   });
   renderPag('rec-pag', lista.length, pags.rec || 1, p => { pags.rec = p; renderRecibos(); });
+}
+
+async function eliminarCobroUI(r) {
+  if (!confirm(`Anular cobro N° ${r.nro_recibo} de ${r.cliente} por ${fmt(r.importe)}?\nSe eliminará el recibo y el cobro registrado.`)) return;
+  const { error: e1 } = await sb.from('recibos').delete().eq('id', r.id);
+  if (e1) { toast('Error al eliminar recibo: ' + e1.message, 'error'); return; }
+  const { error: e2 } = await sb.from('cobros').delete()
+    .eq('venta_id', r.venta_id).eq('fecha', r.fecha).eq('importe', r.importe);
+  if (e2) { toast('Recibo eliminado pero error en cobro: ' + e2.message, 'error'); }
+  else { toast('Cobro anulado correctamente'); }
+  cargarCobranzas();
 }
 
 function toggleVerTodasCob() {
@@ -1856,7 +1911,7 @@ function renderCompras() {
     tdAcc.className = 'td-c';
     tdAcc.style.whiteSpace = 'nowrap';
     if (c.pendiente > 0.01) {
-      tdAcc.appendChild(mkBtn('btn-success', 'dollar-sign', () => abrirPago(c.id, c.proveedor, c.pendiente)));
+      tdAcc.appendChild(mkBtn('btn-success', 'dollar-sign', () => abrirPago(c.id, c.proveedor, c.nro_factura, c.obra, c.pendiente)));
       tdAcc.appendChild(document.createTextNode(' '));
     }
     tdAcc.appendChild(mkBtn('btn-danger', 'trash', () => eliminarCompraUI(c.id)));
@@ -1993,35 +2048,283 @@ function renderPagos() {
     tr.appendChild(mkTd(`<span class="badge ${badge(est)}">${est}</span>`, 'td-c'));
     const tdAcc = document.createElement('td');
     tdAcc.className = 'td-c';
-    if (c.pendiente > 0.01) tdAcc.appendChild(mkBtn('btn-success', 'dollar-sign', () => abrirPago(c.id, c.proveedor, c.pendiente)));
+    if (c.pendiente > 0.01) tdAcc.appendChild(mkBtn('btn-success', 'dollar-sign', () => abrirPago(c.id, c.proveedor, c.nro_factura, c.obra, c.pendiente)));
     tr.appendChild(tdAcc);
     tb.appendChild(tr);
   });
 }
 
-function abrirPago(cid, prov, pendiente) {
+function abrirPago(cid, prov, factura, obra, pendiente) {
+  pagoCtx = { cid, prov, factura: factura || '', obra: obra || '', pendiente };
   ge('mp-cid').value     = cid;
   ge('mp-importe').value = pendiente.toFixed(2);
-  ge('mp-info').textContent = `${prov} — Deuda: ${fmt(pendiente)}`;
+  ge('mp-banco').value   = '';
+  ge('mp-cheque').value  = '';
+  ge('mp-cond').value    = 'Transferencia';
+  ge('mp-info').textContent = `${prov} — ${factura || ''} — Deuda: ${fmt(pendiente)}`;
+  ge('mp-file-preview').style.display = 'none';
+  archivos['mp'] = null;
+  toggleComprobante();
   abrirModal('modal-pago');
 }
 
+function toggleComprobante() {
+  const cond = ge('mp-cond')?.value;
+  ge('mp-upload-group').style.display = cond === 'Transferencia' ? 'block' : 'none';
+}
+
 async function confirmarPago() {
-  const imp = parseFloat(ge('mp-importe').value);
+  console.log('[confirmarPago] inicio');
+  const imp  = parseFloat(ge('mp-importe').value);
+  console.log('[confirmarPago] importe:', imp);
   if (!imp || imp <= 0) { toast('Importe invalido', 'error'); return; }
-  const { error } = await sb.from('pagos').insert({
-    compra_id:  ge('mp-cid').value,
-    fecha:      new Date().toISOString().slice(0, 10),
-    importe:    imp,
-    condicion:  ge('mp-cond').value,
-    banco:      ge('mp-banco').value  || null,
-    nro_cheque: ge('mp-cheque').value || null
+  const cond    = ge('mp-cond').value;
+  const banco   = ge('mp-banco').value  || null;
+  const cheque  = ge('mp-cheque').value || null;
+  const cid     = ge('mp-cid').value;
+  const fecha   = new Date().toISOString().slice(0, 10);
+
+  // 1. Insertar pago (sin select para evitar problemas de RLS en SELECT)
+  const { error: insErr } = await sb.from('pagos').insert({
+    compra_id: cid, fecha, importe: imp, condicion: cond, banco, nro_cheque: cheque
   });
-  if (error) { toast('Error: ' + error.message, 'error'); return; }
-  toast('Pago registrado');
+  console.log('[confirmarPago] insert result - insErr:', insErr);
+  if (insErr) { toast('Error al registrar pago: ' + insErr.message, 'error'); return; }
+
+  // Obtener el ID del pago recién insertado
+  const { data: pagoRow } = await sb.from('pagos')
+    .select('id')
+    .eq('compra_id', cid)
+    .eq('fecha', fecha)
+    .order('id', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const pagoId    = pagoRow?.id ?? null;
+  console.log('[confirmarPago] pagoId:', pagoId, '| pagoCtx:', JSON.stringify(pagoCtx));
+  const nroRecibo = `RP-${Date.now().toString().slice(-8)}`;
+
+  // 2. Subir comprobante si hay archivo (Transferencia)
+  let urlComprobante = null;
+  if (archivos['mp']) {
+    const file = archivos['mp'];
+    const ext  = file.name.split('.').pop();
+    const path = `pagos/${cid}_${Date.now()}.${ext}`;
+    const { error: upErr } = await sb.storage.from('documentos').upload(path, file, { upsert: true, contentType: file.type });
+    if (!upErr) {
+      const { data: { publicUrl } } = sb.storage.from('documentos').getPublicUrl(path);
+      urlComprobante = publicUrl;
+    } else {
+      toast('Aviso: comprobante no subido — ' + upErr.message, 'error');
+    }
+    archivos['mp'] = null;
+  }
+
+  // 3. Guardar recibo en recibos_pagos
+  const { error: recErr } = await sb.from('recibos_pagos').insert({
+    pago_id:         pagoId,
+    compra_id:       String(cid),
+    proveedor:       pagoCtx.prov      || '',
+    nro_factura:     pagoCtx.factura   || null,
+    obra:            pagoCtx.obra      || null,
+    importe:         imp,
+    condicion:       cond,
+    banco:           banco,
+    nro_cheque:      cheque,
+    fecha:           fecha,
+    nro_recibo:      nroRecibo,
+    url_comprobante: urlComprobante
+  });
+  console.log('[confirmarPago] recibos_pagos result - recErr:', recErr);
+  if (recErr) {
+    console.error('[recibo_pago]', recErr);
+    toast('Aviso: recibo no guardado — ' + recErr.message, 'error');
+  }
+
+  // 4. Generar PDF y actualizar UI
   cerrarModal('modal-pago');
+  try {
+    await generarOrdenPagoPDF({
+      prov:      pagoCtx.prov,
+      factura:   pagoCtx.factura,
+      obra:      pagoCtx.obra,
+      pendiente: pagoCtx.pendiente,
+      importe:   imp,
+      fecha:     new Date(),
+      nroRecibo,
+      condicion: cond,
+      banco,
+      cheque
+    });
+    toast('Pago registrado — recibo descargado');
+  } catch (pdfErr) {
+    console.error('[pdf]', pdfErr);
+    toast('Pago registrado (error al generar PDF: ' + pdfErr.message + ')', 'error');
+  }
   cargarPagos();
   cargarDashboard();
+}
+
+// ============================================================
+// RECIBOS DE PAGO
+// ============================================================
+async function cargarRecibosPagos() {
+  const { data, error } = await sb.from('recibos_pagos').select('*').order('fecha', { ascending: false });
+  if (error) {
+    if (error.code === '42P01') {
+      ge('rp-sin-tabla').style.display = 'flex';
+      ge('rp-tabla-wrap').style.display = 'none';
+      console.info('Crea la tabla recibos_pagos en Supabase:\n\nCREATE TABLE recibos_pagos (\n  id bigint generated always as identity primary key,\n  pago_id bigint,\n  compra_id text,\n  proveedor text not null,\n  nro_factura text,\n  obra text,\n  importe numeric not null,\n  condicion text,\n  banco text,\n  nro_cheque text,\n  fecha date not null,\n  nro_recibo text not null,\n  url_comprobante text,\n  created_at timestamptz default now()\n);\nALTER TABLE recibos_pagos ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "recibos_pagos_all" ON recibos_pagos FOR ALL USING (true);');
+    } else {
+      toast('Error cargando recibos de pago: ' + error.message, 'error');
+    }
+    return;
+  }
+  ge('rp-sin-tabla').style.display = 'none';
+  ge('rp-tabla-wrap').style.display = 'block';
+  G.recibosPagos = data || [];
+  pags.rp = 1;
+  renderRecibosPagos();
+}
+
+function renderRecibosPagos() {
+  const busq = (ge('rp-busq')?.value || '').toLowerCase();
+  let lista = G.recibosPagos || [];
+  if (busq) lista = lista.filter(r =>
+    (r.proveedor   || '').toLowerCase().includes(busq) ||
+    (r.nro_recibo  || '').includes(busq) ||
+    (r.nro_factura || '').toLowerCase().includes(busq)
+  );
+  const ini = (pags.rp - 1) * PER_PAG;
+  const pag = lista.slice(ini, ini + PER_PAG);
+  const tb  = ge('rp-tbody');
+  tb.innerHTML = '';
+  if (!pag.length) {
+    tb.innerHTML = '<tr><td colspan="8"><div class="empty-state"><i class="fas fa-receipt"></i>Sin recibos de pago</div></td></tr>';
+    renderPag('rp-pag', 0, 1, () => {});
+    return;
+  }
+  pag.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.appendChild(mkTd(`<strong>${r.nro_recibo}</strong>`));
+    tr.appendChild(mkTd(r.fecha ? new Date(r.fecha + 'T00:00:00').toLocaleDateString('es-AR') : '-'));
+    tr.appendChild(mkTd(`<strong>${r.proveedor}</strong>`));
+    tr.appendChild(mkTd(`<span style="color:var(--accent)">${r.nro_factura || '-'}</span>`));
+    tr.appendChild(mkTd(`<span style="color:var(--muted)">${r.obra || '-'}</span>`));
+    tr.appendChild(mkTd(fmt(r.importe), 'td-r'));
+    tr.appendChild(mkTd(r.condicion || '-'));
+    const tdAcc = document.createElement('td');
+    tdAcc.className = 'td-c';
+    tdAcc.appendChild(mkBtn('btn-primary', 'download', () => generarOrdenPagoPDF({
+      prov: r.proveedor, factura: r.nro_factura, obra: r.obra, pendiente: r.importe,
+      importe: r.importe, fecha: new Date(r.fecha + 'T00:00:00'),
+      nroRecibo: r.nro_recibo, condicion: r.condicion, banco: r.banco, cheque: r.nro_cheque
+    })));
+    if (r.url_comprobante) {
+      const btnComp = document.createElement('button');
+      btnComp.className = 'btn btn-secondary btn-sm';
+      btnComp.title = 'Ver comprobante';
+      btnComp.innerHTML = '<i class="fas fa-paperclip"></i>';
+      btnComp.onclick = () => window.open(r.url_comprobante, '_blank');
+      tdAcc.appendChild(btnComp);
+    }
+    if (G.rol === 'admin') {
+      tdAcc.appendChild(mkBtn('btn-danger', 'trash', () => eliminarPagoUI(r)));
+    }
+    tr.appendChild(tdAcc);
+    tb.appendChild(tr);
+  });
+  renderPag('rp-pag', lista.length, pags.rp, p => { pags.rp = p; renderRecibosPagos(); });
+}
+
+async function eliminarPagoUI(r) {
+  if (!confirm(`Anular pago N° ${r.nro_recibo} de ${r.proveedor} por ${fmt(r.importe)}?\nSe eliminará el recibo y el pago registrado.`)) return;
+  const { error: e1 } = await sb.from('recibos_pagos').delete().eq('id', r.id);
+  if (e1) { toast('Error al eliminar recibo: ' + e1.message, 'error'); return; }
+  if (r.pago_id) {
+    const { error: e2 } = await sb.from('pagos').delete().eq('id', r.pago_id);
+    if (e2) { toast('Recibo eliminado pero error en pago: ' + e2.message, 'error'); }
+  }
+  toast('Pago anulado correctamente');
+  cargarRecibosPagos();
+  cargarPagos();
+}
+
+async function generarOrdenPagoPDF({ prov, factura, obra, pendiente, importe, fecha, nroRecibo, condicion, banco, cheque }) {
+  const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
+  const lm  = t => t ? String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9 \-\.\,\/\$\#\:]/g, '') : '';
+  const W = 210, M = 18;
+  const ink   = [15, 23, 42];
+  const muted = [100, 116, 139];
+  const light = [248, 250, 252];
+  const accent= [30, 58, 138];
+  let y = 18;
+
+  // Logo / cabecera
+  const cfg = G.config || {};
+  if (cfg.logo_url) {
+    try {
+      const logoData = await cargarLogoParaPDF(cfg.logo_url);
+      if (logoData) doc.addImage(logoData, 'PNG', M, y, 28, 14);
+    } catch {}
+  }
+  doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.setTextColor(...accent);
+  doc.text('ORDEN DE PAGO', W - M, y + 6, { align: 'right' });
+  doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(...muted);
+  doc.text(`N\u00b0 ${nroRecibo}`, W - M, y + 12, { align: 'right' });
+  if (cfg.empresa_nombre) {
+    doc.setFontSize(8); doc.setTextColor(...muted);
+    doc.text(lm(cfg.empresa_nombre), M + 32, y + 4);
+    if (cfg.empresa_cuit) doc.text('CUIT: ' + lm(cfg.empresa_cuit), M + 32, y + 9);
+  }
+  y += 24;
+  doc.setDrawColor(226, 232, 240); doc.setLineWidth(0.4); doc.line(M, y, W - M, y); y += 8;
+
+  const seccion = (titulo) => {
+    doc.setFillColor(...accent);
+    doc.rect(M, y, W - M * 2, 6, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(255, 255, 255);
+    doc.text(titulo, M + 3, y + 4);
+    y += 10;
+  };
+  const fila = (label, valor) => {
+    doc.setFontSize(9.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...muted);
+    doc.text(label, M, y);
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(...ink);
+    doc.text(lm(String(valor)), M + 46, y);
+    y += 6;
+  };
+
+  seccion('PAGO A');
+  fila('Proveedor', prov);
+  y += 4;
+
+  seccion('IMPORTE');
+  doc.setFillColor(...light); doc.setDrawColor(226, 232, 240); doc.setLineWidth(0.3);
+  doc.roundedRect(M, y, W - M * 2, 20, 2, 2, 'FD');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.setTextColor(...ink);
+  doc.text(fmt(importe), W / 2, y + 13, { align: 'center' });
+  y += 28;
+
+  seccion('EN CONCEPTO DE');
+  if (factura) fila('Comprobante', factura);
+  if (obra)    fila('Obra', obra);
+  fila('Condicion', condicion || '-');
+  if (banco)  fila('Banco', banco);
+  if (cheque) fila('N\u00b0 Cheque', cheque);
+  fila('Fecha', (fecha instanceof Date ? fecha : new Date(fecha)).toLocaleDateString('es-AR'));
+  y += 8;
+
+  // Firmas
+  const sigY = Math.max(y + 14, 220);
+  doc.setDrawColor(203, 213, 225); doc.setLineWidth(0.4);
+  doc.line(M, sigY, M + 65, sigY);
+  doc.line(W - M - 65, sigY, W - M, sigY);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...muted);
+  doc.text('Firma Autorizada', M + 32, sigY + 5, { align: 'center' });
+  doc.text('Conformidad Proveedor', W - M - 32, sigY + 5, { align: 'center' });
+
+  doc.save(`orden_pago_${nroRecibo}.pdf`);
 }
 
 // ============================================================
@@ -2456,6 +2759,17 @@ ge('cf-busq').addEventListener('input',   debounce(cargarCompras, 400));
     p.innerHTML = `<div class="upload-preview"><i class="fas ${icon}" style="color:var(--accent)"></i><span style="flex:1;font-size:12px;">${f.name}</span></div>`;
   });
 
+  ge('mp-file').addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    if (f.size > 10 * 1024 * 1024) { toast('El archivo supera 10 MB', 'error'); return; }
+    archivos['mp'] = f;
+    const icon = f.type === 'application/pdf' ? 'fa-file-pdf' : 'fa-file-image';
+    const p    = ge('mp-file-preview');
+    p.style.display = 'flex';
+    p.innerHTML = `<div class="upload-preview"><i class="fas ${icon}" style="color:var(--accent)"></i><span style="flex:1;font-size:12px;">${f.name}</span></div>`;
+  });
+
   // Iniciar auth
   initAuth();
 });
@@ -2472,7 +2786,11 @@ window.confirmarCliente  = confirmarCliente;
 window.confirmarObra     = confirmarObra;
 window.confirmarProveedor = confirmarProveedor;
 window.confirmarCobro    = confirmarCobro;
-window.confirmarPago     = confirmarPago;
+window.eliminarCobroUI   = eliminarCobroUI;
+window.confirmarPago       = confirmarPago;
+window.toggleComprobante   = toggleComprobante;
+window.renderRecibosPagos  = renderRecibosPagos;
+window.eliminarPagoUI      = eliminarPagoUI;
 window.cerrarModal       = cerrarModal;
 window.exportarVentasPDF = exportarVentasPDF;
 window.guardarConfigUI   = guardarConfigUI;
