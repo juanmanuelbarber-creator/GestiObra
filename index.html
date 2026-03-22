@@ -1610,7 +1610,7 @@ async function generarReciboPDF({ vid, cliente, factura, pendiente, obra, import
   // ── ENCABEZADO ──────────────────────────────────────────
   let logoW = 0;
   if (logoData) {
-    const maxH = 18, maxW = 40;
+    const maxH = 28, maxW = 60;
     const tmpImg = new Image(); tmpImg.src = logoData;
     const ratio  = tmpImg.naturalWidth / tmpImg.naturalHeight || 1;
     const h = Math.min(maxH, maxW / ratio);
