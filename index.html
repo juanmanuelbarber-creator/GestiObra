@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v2026-03-22-a -->
+<!-- v2026-03-22-b -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -817,6 +817,9 @@ function toast(msg, tipo) {
 
 function abrirModal(id)  { ge(id).classList.add('open'); }
 function cerrarModal(id) { ge(id).classList.remove('open'); }
+function cerrarTodosModales() {
+  document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+}
 
 function badge(estado) {
   if (['cobrado','pagado','activa'].includes(estado)) return 'badge-green';
@@ -926,6 +929,14 @@ ge('btn-google-login').addEventListener('click', async () => {
     provider: 'google',
     options:  { redirectTo: window.location.href }
   });
+});
+
+// Cerrar modal al hacer click en el fondo oscuro o presionar Escape
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) cerrarTodosModales();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') cerrarTodosModales();
 });
 
 // ============================================================
@@ -1590,6 +1601,7 @@ async function confirmarCobro() {
   });
   if (error) {
     console.error('[cobro] error:', error);
+    cerrarModal('modal-cobro');
     toast('Error al guardar cobro: ' + error.message, 'error');
     return;
   }
@@ -2089,7 +2101,7 @@ async function confirmarPago() {
     compra_id: cid, fecha, importe: imp, condicion: cond, banco, nro_cheque: cheque
   });
   console.log('[confirmarPago] insert result - insErr:', insErr);
-  if (insErr) { toast('Error al registrar pago: ' + insErr.message, 'error'); return; }
+  if (insErr) { cerrarModal('modal-pago'); toast('Error al registrar pago: ' + insErr.message, 'error'); return; }
 
   // Obtener el ID del pago recién insertado
   const { data: pagoRow } = await sb.from('pagos')
