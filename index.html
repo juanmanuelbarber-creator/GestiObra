@@ -1434,7 +1434,7 @@ function renderCobranzas() {
   pag.forEach(v => {
     const tr = document.createElement('tr');
     tr.appendChild(mkTd(`<strong>${v.cliente}</strong>`));
-    tr.appendChild(mkTd(`<span style="color:var(--accent)">${v.tipo}${v.factura}</span>`));
+    tr.appendChild(mkTd(`<span style="color:var(--accent)">${v.factura}</span>`));
     tr.appendChild(mkTd(`<span style="color:var(--muted)">${v.obra || '-'}</span>`));
     tr.appendChild(mkTd(fmt(v.total), 'td-r'));
     tr.appendChild(mkTd(`<span style="color:var(--success)">${fmt(v.cobrado)}</span>`, 'td-r'));
@@ -1442,7 +1442,7 @@ function renderCobranzas() {
     tr.appendChild(mkTd(`<span class="badge ${badge(v.estado)}">${v.estado}</span>`, 'td-c'));
     const tdAcc = document.createElement('td');
     tdAcc.className = 'td-c';
-    if (v.pendiente > 0.01) tdAcc.appendChild(mkBtn('btn-success', 'dollar-sign', () => abrirCobro(v.id, v.cliente, v.tipo + v.factura, v.pendiente, v.obra)));
+    if (v.pendiente > 0.01) tdAcc.appendChild(mkBtn('btn-success', 'dollar-sign', () => abrirCobro(v.id, v.cliente, v.factura, v.pendiente, v.obra)));
     tr.appendChild(tdAcc);
     tb.appendChild(tr);
   });
