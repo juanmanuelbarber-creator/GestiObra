@@ -2082,13 +2082,22 @@ async function confirmarPago() {
   const cid     = ge('mp-cid').value;
   const fecha   = new Date().toISOString().slice(0, 10);
 
-  // 1. Insertar pago
-  const { data: pagoDat, error } = await sb.from('pagos').insert({
+  // 1. Insertar pago (sin select para evitar problemas de RLS en SELECT)
+  const { error: insErr } = await sb.from('pagos').insert({
     compra_id: cid, fecha, importe: imp, condicion: cond, banco, nro_cheque: cheque
-  }).select('id').single();
-  if (error) { toast('Error al registrar pago: ' + error.message, 'error'); return; }
+  });
+  if (insErr) { toast('Error al registrar pago: ' + insErr.message, 'error'); return; }
 
-  const pagoId    = pagoDat?.id ?? null;
+  // Obtener el ID del pago recién insertado
+  const { data: pagoRow } = await sb.from('pagos')
+    .select('id')
+    .eq('compra_id', cid)
+    .eq('fecha', fecha)
+    .order('id', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const pagoId    = pagoRow?.id ?? null;
   const nroRecibo = `RP-${Date.now().toString().slice(-8)}`;
 
   // 2. Subir comprobante si hay archivo (Transferencia)
@@ -2128,20 +2137,25 @@ async function confirmarPago() {
   }
 
   // 4. Generar PDF y actualizar UI
-  toast('Pago registrado — descargando recibo...');
   cerrarModal('modal-pago');
-  generarOrdenPagoPDF({
-    prov:      pagoCtx.prov,
-    factura:   pagoCtx.factura,
-    obra:      pagoCtx.obra,
-    pendiente: pagoCtx.pendiente,
-    importe:   imp,
-    fecha:     new Date(),
-    nroRecibo,
-    condicion: cond,
-    banco,
-    cheque
-  });
+  try {
+    await generarOrdenPagoPDF({
+      prov:      pagoCtx.prov,
+      factura:   pagoCtx.factura,
+      obra:      pagoCtx.obra,
+      pendiente: pagoCtx.pendiente,
+      importe:   imp,
+      fecha:     new Date(),
+      nroRecibo,
+      condicion: cond,
+      banco,
+      cheque
+    });
+    toast('Pago registrado — recibo descargado');
+  } catch (pdfErr) {
+    console.error('[pdf]', pdfErr);
+    toast('Pago registrado (error al generar PDF: ' + pdfErr.message + ')', 'error');
+  }
   cargarPagos();
   cargarDashboard();
 }
