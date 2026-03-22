@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v2026-03-18-b -->
+<!-- v2026-03-22-a -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -2803,11 +2803,16 @@ async function generarEstadoCuentaClientePDF(clienteId) {
   if (e1) { toast('Error: ' + e1.message, 'error'); return; }
 
   const ventaIds = (ventas || []).map(v => v.id);
+  let cobrosRaw = [];
   let cobrosMap = {};
   if (ventaIds.length) {
-    const { data: cobros } = await sb.from('cobros').select('venta_id,importe').in('venta_id', ventaIds);
-    (cobros || []).forEach(c => { cobrosMap[c.venta_id] = (cobrosMap[c.venta_id] || 0) + Number(c.importe); });
+    const { data: cobros } = await sb.from('cobros').select('venta_id,fecha,importe').in('venta_id', ventaIds).order('fecha', { ascending: true });
+    cobrosRaw = cobros || [];
+    cobrosRaw.forEach(c => { cobrosMap[c.venta_id] = (cobrosMap[c.venta_id] || 0) + Number(c.importe); });
   }
+
+  const ventaMap = {};
+  (ventas || []).forEach(v => { ventaMap[v.id] = v.nro_factura || '-'; });
 
   const rows = (ventas || []).map(v => {
     const total     = Number(v.total) || 0;
@@ -2882,7 +2887,34 @@ async function generarEstadoCuentaClientePDF(clienteId) {
     columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'center' } }
   });
 
-  y = doc.lastAutoTable.finalY + 8;
+  // ── HISTORIAL DE COBROS ──────────────────────────────────
+  y = doc.lastAutoTable.finalY + 10;
+  if (y > 240) { doc.addPage(); y = 20; }
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(...muted);
+  doc.text('HISTORIAL DE COBROS', M, y); y += 1.5;
+  doc.setDrawColor(226, 232, 240); doc.setLineWidth(0.2);
+  doc.line(M, y, W - M, y); y += 3;
+
+  if (cobrosRaw.length) {
+    const cobrosRows = cobrosRaw.map(c => [c.fecha || '-', lm(ventaMap[c.venta_id] || '-'), fmtN(Number(c.importe))]);
+    doc.autoTable({
+      head: [['Fecha de cobro', 'Factura', 'Importe']],
+      body: cobrosRows,
+      startY: y,
+      theme: 'striped',
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold' },
+      columnStyles: { 2: { halign: 'right' } }
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  } else {
+    doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(...muted);
+    doc.text('Sin cobros registrados.', M, y + 5);
+    y += 12;
+  }
+
+  // ── RESUMEN ──────────────────────────────────────────────
   if (y > 255) { doc.addPage(); y = 20; }
 
   const colW = (W - M * 2) / 3;
@@ -2919,11 +2951,16 @@ async function generarEstadoCuentaProveedorPDF(proveedorId) {
   if (e1) { toast('Error: ' + e1.message, 'error'); return; }
 
   const compraIds = (compras || []).map(c => c.id);
+  let pagosRaw = [];
   let pagosMap = {};
   if (compraIds.length) {
-    const { data: pagos } = await sb.from('pagos').select('compra_id,importe').in('compra_id', compraIds);
-    (pagos || []).forEach(p => { pagosMap[p.compra_id] = (pagosMap[p.compra_id] || 0) + Number(p.importe); });
+    const { data: pagos } = await sb.from('pagos').select('compra_id,fecha,importe,condicion,banco').in('compra_id', compraIds).order('fecha', { ascending: true });
+    pagosRaw = pagos || [];
+    pagosRaw.forEach(p => { pagosMap[p.compra_id] = (pagosMap[p.compra_id] || 0) + Number(p.importe); });
   }
+
+  const compraMap = {};
+  (compras || []).forEach(c => { compraMap[c.id] = c.nro_factura || '-'; });
 
   const rows = (compras || []).map(c => {
     const total     = Number(c.total) || 0;
@@ -2989,7 +3026,7 @@ async function generarEstadoCuentaProveedorPDF(proveedorId) {
 
   const tableRows = rows.map(r => [r.fecha, lm(r.factura), lm(r.obra), lm(r.categoria), fmtN(r.total), fmtN(r.pagado), fmtN(r.pendiente), r.estado]);
   doc.autoTable({
-    head: [['Fecha', 'Factura', 'Obra', 'Categoria', 'Total', 'Pagado', 'Pendiente', 'Estado']],
+    head: [['Fecha', 'Factura', 'Obra', 'Categor\u00eda', 'Total', 'Pagado', 'Pendiente', 'Estado']],
     body: tableRows,
     startY: y,
     theme: 'striped',
@@ -2998,7 +3035,34 @@ async function generarEstadoCuentaProveedorPDF(proveedorId) {
     columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'center' } }
   });
 
-  y = doc.lastAutoTable.finalY + 8;
+  // ── HISTORIAL DE PAGOS ───────────────────────────────────
+  y = doc.lastAutoTable.finalY + 10;
+  if (y > 240) { doc.addPage(); y = 20; }
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(...muted);
+  doc.text('HISTORIAL DE PAGOS', M, y); y += 1.5;
+  doc.setDrawColor(226, 232, 240); doc.setLineWidth(0.2);
+  doc.line(M, y, W - M, y); y += 3;
+
+  if (pagosRaw.length) {
+    const pagosRows = pagosRaw.map(p => [p.fecha || '-', lm(compraMap[p.compra_id] || '-'), lm(p.condicion || '-'), lm(p.banco || '-'), fmtN(Number(p.importe))]);
+    doc.autoTable({
+      head: [['Fecha de pago', 'Factura', 'Condici\u00f3n', 'Banco', 'Importe']],
+      body: pagosRows,
+      startY: y,
+      theme: 'striped',
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold' },
+      columnStyles: { 4: { halign: 'right' } }
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  } else {
+    doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(...muted);
+    doc.text('Sin pagos registrados.', M, y + 5);
+    y += 12;
+  }
+
+  // ── RESUMEN ──────────────────────────────────────────────
   if (y > 255) { doc.addPage(); y = 20; }
 
   const colW = (W - M * 2) / 3;
