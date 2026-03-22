@@ -1501,10 +1501,24 @@ function renderRecibos() {
       obra: r.obra, importe: r.importe, fecha: new Date(r.fecha + 'T00:00:00'),
       nroRecibo: r.nro_recibo, condicion: r.condicion
     })));
+    if (G.rol === 'admin') {
+      tdAcc.appendChild(mkBtn('btn-danger', 'trash', () => eliminarCobroUI(r)));
+    }
     tr.appendChild(tdAcc);
     tb.appendChild(tr);
   });
   renderPag('rec-pag', lista.length, pags.rec || 1, p => { pags.rec = p; renderRecibos(); });
+}
+
+async function eliminarCobroUI(r) {
+  if (!confirm(`Anular cobro N° ${r.nro_recibo} de ${r.cliente} por ${fmt(r.importe)}?\nSe eliminará el recibo y el cobro registrado.`)) return;
+  const { error: e1 } = await sb.from('recibos').delete().eq('id', r.id);
+  if (e1) { toast('Error al eliminar recibo: ' + e1.message, 'error'); return; }
+  const { error: e2 } = await sb.from('cobros').delete()
+    .eq('venta_id', r.venta_id).eq('fecha', r.fecha).eq('importe', r.importe);
+  if (e2) { toast('Recibo eliminado pero error en cobro: ' + e2.message, 'error'); }
+  else { toast('Cobro anulado correctamente'); }
+  cargarCobranzas();
 }
 
 function toggleVerTodasCob() {
@@ -2472,6 +2486,7 @@ window.confirmarCliente  = confirmarCliente;
 window.confirmarObra     = confirmarObra;
 window.confirmarProveedor = confirmarProveedor;
 window.confirmarCobro    = confirmarCobro;
+window.eliminarCobroUI   = eliminarCobroUI;
 window.confirmarPago     = confirmarPago;
 window.cerrarModal       = cerrarModal;
 window.exportarVentasPDF = exportarVentasPDF;
